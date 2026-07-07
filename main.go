@@ -13,14 +13,17 @@ import (
 var assets embed.FS
 
 func main() {
+	showSplash() // GDI+ 原生启动画面，秒开
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "Sliect Launcher",
-		Width:     1200,
-		Height:    800,
-		MinWidth:  900,
-		MinHeight: 600,
+		Title:       "Sliect Launcher",
+		StartHidden: true, // 启动画面关闭后由 startup() 显示
+		Width:       1200,
+		Height:      800,
+		MinWidth:    900,
+		MinHeight:   600,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

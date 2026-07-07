@@ -11,6 +11,9 @@
 <body>
   <div id="app">
 
+    <!-- ═══════════ APP BODY（侧边栏 + 主内容） ═══════════ -->
+    <div class="app-body">
+
     <!-- ═══════════ SIDEBAR ═══════════ -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -42,35 +45,32 @@
       <div class="sidebar-projects" id="sidebar-projects">
         <!-- Rendered by JS -->
       </div>
-
-      <div class="sidebar-nav">
-        <div class="sidebar-nav-item" id="nav-settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          <span>设置</span>
-        </div>
-      </div>
     </aside>
 
     <!-- ═══════════ MAIN CONTENT ═══════════ -->
     <main class="main-content">
+
+      <!-- ── 顶部导航 ── -->
+      <div class="topnav">
+        <div class="topnav-tabs" id="topnav-tabs">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="topnav-right">
+          <button class="topnav-icon-btn" id="nav-bell" title="通知中心">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="topnav-badge" id="nav-bell-badge" style="display:none;">0</span>
+          </button>
+          <button class="topnav-icon-btn" id="nav-tab-settings" title="设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
 
       <!-- ── Dashboard View ── -->
       <div id="view-dashboard" class="view active">
         <div class="dashboard-toolbar">
           <div class="dashboard-toolbar-left">
             <h1 class="topbar-title">控制台</h1>
-          </div>
-          <div class="dashboard-toolbar-right">
-            <button class="btn btn-success btn-sm" id="btn-start-all">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              全部启动
-            </button>
-            <button class="btn btn-ghost btn-sm" id="btn-stop-all">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-              全部停止
-            </button>
           </div>
         </div>
 
@@ -131,34 +131,93 @@
 
         <!-- Top Processes -->
         <div class="top-processes" id="top-processes">
-          <div class="top-process-card">
-            <div class="top-process-header">
-              <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/></svg>
-              <span class="top-process-title">CPU 占用 Top 5</span>
+            <div class="top-process-card">
+                <div class="top-process-header">
+                    <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/></svg>
+                    <span class="top-process-title">CPU 占用 Top 5</span>
+                </div>
+                <div id="top-cpu-list">
+                    <!-- Rendered by JS -->
+                </div>
             </div>
-            <div id="top-cpu-list">
-              <!-- Rendered by JS -->
+            <div class="top-process-card">
+                <div class="top-process-header">
+                    <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
+                    <span class="top-process-title">内存占用 Top 5</span>
+                </div>
+                <div id="top-mem-list">
+                    <!-- Rendered by JS -->
+                </div>
             </div>
-          </div>
-          <div class="top-process-card">
-            <div class="top-process-header">
-              <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
-              <span class="top-process-title">内存占用 Top 5</span>
-            </div>
-            <div id="top-mem-list">
-              <!-- Rendered by JS -->
-            </div>
-          </div>
         </div>
 
-        <!-- Project Grid -->
-        <div>
-          <div class="section-header">
-            <h2 class="section-title">项目概览</h2>
+        <!-- 实时折线图（Phase 2） -->
+        <div class="monitor-charts">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <span class="chart-dot cpu"></span>CPU 使用率
+                    </span>
+                    <span class="chart-card-current" id="chart-cpu-current">0%</span>
+                </div>
+                <div class="chart-canvas" id="chart-cpu"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <span class="chart-dot memory"></span>内存使用率
+                    </span>
+                    <span class="chart-card-current" id="chart-mem-current">0%</span>
+                </div>
+                <div class="chart-canvas" id="chart-mem"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <span class="chart-dot disk"></span>磁盘 IO 速率
+                    </span>
+                    <span class="chart-card-current" id="chart-disk-current">0 B/s</span>
+                </div>
+                <div class="chart-canvas" id="chart-disk"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <span class="chart-dot net-up"></span>网络流量
+                    </span>
+                    <span class="chart-card-current" id="chart-net-current">0 B/s</span>
+                </div>
+                <div class="chart-canvas" id="chart-net"></div>
+            </div>
+        </div>
+    </div>
+
+      <!-- ── Projects Management View ── -->
+      <div id="view-projects" class="view">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">项目管理</h1>
           </div>
-          <div class="project-grid" id="project-grid">
-            <!-- Rendered by JS -->
+          <div class="dashboard-toolbar-right">
+            <button class="btn btn-success btn-sm" id="btn-start-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              全部启动
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-stop-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              全部停止
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-autostart-order" title="调整自启项目的启动顺序">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              启动顺序
+            </button>
           </div>
+        </div>
+        <div class="section-header">
+          <h2 class="section-title">项目列表</h2>
+        </div>
+        <div class="project-grid" id="project-grid">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
@@ -244,6 +303,152 @@
             <input type="text" class="log-command-input" id="log-command-input" placeholder="输入命令发送到进程..." autocomplete="off" spellcheck="false" />
             <button class="btn btn-ghost btn-xs" id="btn-send-command">发送</button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Logs View（Phase 3 全局日志查看器） ── -->
+      <div id="view-logs" class="view view-logs-fullheight">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">日志查看</h1>
+          </div>
+          <div class="dashboard-toolbar-right log-global-toolbar">
+            <div class="log-global-search">
+              <svg class="log-global-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="global-log-search" placeholder="搜索关键词（实时高亮）..." autocomplete="off" spellcheck="false" />
+            </div>
+            <select class="form-select log-global-select" id="global-log-level">
+              <option value="">全部级别</option>
+              <option value="error">ERROR</option>
+              <option value="warn">WARN</option>
+              <option value="info">INFO</option>
+              <option value="debug">DEBUG</option>
+            </select>
+            <select class="form-select log-global-select" id="global-log-project">
+              <option value="">全部项目</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="btn-clear-global-logs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              清空全部
+            </button>
+          </div>
+        </div>
+        <div class="log-global-info">
+          <span id="global-log-count">0 条</span>
+          <span class="log-global-scroll-hint" id="global-log-scroll-hint" style="display:none;">
+            已暂停自动滚动 · <a href="#" id="global-log-resume">回到底部</a>
+          </span>
+        </div>
+        <div class="log-content log-global-content" id="global-log-content">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ── System Info View（Phase 2 详细监控） ── -->
+      <div id="view-sysinfo" class="view">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">系统信息</h1>
+          </div>
+          <div class="dashboard-toolbar-right">
+            <button class="btn btn-ghost btn-sm" id="btn-sysinfo-refresh">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              刷新
+            </button>
+          </div>
+        </div>
+
+        <!-- 磁盘分区使用情况 -->
+        <div class="section-header">
+          <h2 class="section-title">磁盘分区</h2>
+        </div>
+        <div class="sysinfo-disk-list" id="sysinfo-disk-list">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- 磁盘 IO 速率 -->
+        <div class="section-header" style="margin-top: 24px;">
+          <h2 class="section-title">磁盘 IO 速率</h2>
+        </div>
+        <div class="sysinfo-io-grid" id="sysinfo-diskio-list">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- 网络流量 -->
+        <div class="section-header" style="margin-top: 24px;">
+          <h2 class="section-title">网络接口</h2>
+        </div>
+        <div class="sysinfo-io-grid" id="sysinfo-netio-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ── Scheduler View（Phase 4） ── -->
+      <div id="view-scheduler" class="view">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">计划任务</h1>
+          </div>
+          <div class="dashboard-toolbar-right">
+            <button class="btn btn-primary btn-sm" id="btn-add-task">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              添加任务
+            </button>
+          </div>
+        </div>
+        <div class="scheduler-content" id="scheduler-task-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ── Ports View（Phase 4） ── -->
+      <div id="view-ports" class="view">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">端口管理</h1>
+          </div>
+          <div class="dashboard-toolbar-right ports-toolbar">
+            <div class="ports-search">
+              <svg class="ports-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="ports-search" placeholder="搜索端口 / 进程 / PID..." autocomplete="off" spellcheck="false" />
+            </div>
+            <select class="form-select ports-proto-select" id="ports-protocol-filter">
+              <option value="">全部协议</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="btn-ports-refresh">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              刷新
+            </button>
+          </div>
+        </div>
+
+        <!-- 端口统计卡片 -->
+        <div class="ports-stats-row">
+          <div class="ports-stat-card">
+            <div class="ports-stat-value" id="ports-stats-total">0</div>
+            <div class="ports-stat-label">总占用端口</div>
+          </div>
+          <div class="ports-stat-card">
+            <div class="ports-stat-value" id="ports-stats-tcp">0</div>
+            <div class="ports-stat-label">TCP</div>
+          </div>
+          <div class="ports-stat-card">
+            <div class="ports-stat-value" id="ports-stats-udp">0</div>
+            <div class="ports-stat-label">UDP</div>
+          </div>
+          <div class="ports-stat-card">
+            <div class="ports-stat-value" id="ports-stats-proc">0</div>
+            <div class="ports-stat-label">相关进程</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">监听端口列表</h2>
+        </div>
+        <div id="ports-list">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
@@ -348,6 +553,32 @@
             <div class="port-check-result" id="port-check-result" style="display:none;"></div>
           </div>
 
+          <!-- Backup & Restore (Phase 6) -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">备份与恢复</h3>
+            <div class="setting-row backup-row">
+              <div class="setting-info">
+                <div class="setting-label">导出配置</div>
+                <div class="setting-desc">将当前所有项目、分组、计划任务和设置导出为 YAML 文件</div>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-export-config">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                导出
+              </button>
+            </div>
+            <div class="setting-row backup-row">
+              <div class="setting-info">
+                <div class="setting-label">导入配置</div>
+                <div class="setting-desc">从 YAML 文件恢复配置，会合并到当前配置（运行中的进程不受影响）</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btn-import-config">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                导入
+              </button>
+              <input type="file" id="import-config-file" accept=".yaml,.yml,.txt" style="display:none;" />
+            </div>
+          </div>
+
           </div><!-- /settings-container -->
 
           <!-- Software Info -->
@@ -358,7 +589,7 @@
               <p class="software-subtitle">启动台</p>
               <div class="software-version">
                 <span class="version-label">版本</span>
-                <span class="version-value">1.0.260706.2000</span>
+                <span class="version-value" id="app-version">...</span>
               </div>
               <div class="software-divider"></div>
               <div class="software-team">
@@ -370,10 +601,33 @@
           </div>
 
         </div><!-- /settings-layout -->
-        </div><!-- /view-settings -->
+      </div><!-- /view-settings -->
 
     </main>
+    </div><!-- /app-body -->
+
+    <!-- ═══════════ 底部状态栏（全宽） ═══════════ -->
+    <div class="status-bar">
+      <div class="status-bar-item" id="statusbar-running">
+        <span class="statusbar-dot running"></span>运行中 <strong>0</strong> / 0
+      </div>
+      <div class="status-bar-spacer"></div>
+      <div class="status-bar-item" id="statusbar-mem"></div>
+      <div class="status-bar-item" id="statusbar-uptime"></div>
+    </div>
+
   </div><!-- /app -->
+
+  <!-- ═══════════ 通知中心面板 ═══════════ -->
+  <div class="notification-panel" id="notification-panel">
+    <div class="notification-header">
+      <h3>通知中心</h3>
+      <button class="notification-close" id="notification-close" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="notification-list" id="notification-list"></div>
+  </div>
 
   <!-- ═══════════ PROJECT MODAL ═══════════ -->
   <div class="modal-overlay" id="modal-project">
@@ -442,11 +696,31 @@
         <div class="form-group">
           <label class="form-label">
             工作目录
-            <span class="info-tip" data-tooltip="命令执行时的当前目录。通常设置为项目根目录，留空则使用程序默认路径">ℹ</span>
+            <span class="info-tip" data-tooltip="命令执行时的当前目录。通常设置为项目根目录，留空则使用程序默认路径。点击「浏览」打开内嵌文件浏览面板">ℹ</span>
           </label>
           <div class="form-input-group">
             <input class="form-input" id="proj-workdir" placeholder="项目所在的文件夹路径" />
             <button class="btn btn-ghost btn-sm" id="btn-browse-workdir">浏览</button>
+          </div>
+          <!-- Phase 5 内嵌文件浏览面板 -->
+          <div class="filebrowser-panel" id="filebrowser-panel" style="display:none;">
+            <div class="filebrowser-toolbar">
+              <div class="filebrowser-breadcrumb" id="filebrowser-breadcrumb">我的电脑</div>
+              <div class="filebrowser-actions">
+                <button class="btn btn-ghost btn-sm" id="btn-filebrowser-up" title="上一级">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </button>
+                <button class="btn btn-ghost btn-sm" id="btn-filebrowser-refresh" title="刷新">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 1 1 2.13 3.36L1 14"/><path d="M20.49 15a9 9 0 1 1-2.13-3.36L23 10"/></svg>
+                </button>
+                <button class="btn btn-primary btn-sm" id="btn-filebrowser-confirm">使用此目录</button>
+                <button class="btn btn-ghost btn-sm" id="btn-filebrowser-close">关闭</button>
+              </div>
+            </div>
+            <div class="filebrowser-body">
+              <div class="filebrowser-tree" id="filebrowser-tree"></div>
+              <div class="filebrowser-list" id="filebrowser-list"></div>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -516,6 +790,124 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" data-modal="modal-group">取消</button>
         <button class="btn btn-primary" id="btn-save-group">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TASK MODAL (Phase 4 计划任务编辑) ═══════════ -->
+  <div class="modal-overlay" id="modal-task">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-task-title">添加任务</h2>
+        <button class="modal-close" data-modal="modal-task">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">
+              任务 ID <span class="required">*</span>
+              <span class="info-tip" data-tooltip="唯一标识符，仅限英文小写、数字和短横线，创建后不可修改">ℹ</span>
+            </label>
+            <input class="form-input" id="task-id" placeholder="backup-db" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              任务名称 <span class="required">*</span>
+            </label>
+            <input class="form-input" id="task-name" placeholder="每日数据库备份" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            Cron 表达式 <span class="required">*</span>
+            <span class="info-tip" data-tooltip="5 字段格式：分 时 日 月 周。例如 0 3 * * * 表示每天 3:00">ℹ</span>
+          </label>
+          <input class="form-input" id="task-cron" placeholder="0 3 * * *" />
+          <div class="cron-presets" id="task-cron-presets">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="cron-desc" id="task-cron-desc"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            目标项目 <span class="required">*</span>
+            <span class="info-tip" data-tooltip="计划任务触发时启动的项目">ℹ</span>
+          </label>
+          <select class="form-select" id="task-project">
+            <option value="">— 选择目标项目 —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">
+              超时秒数
+              <span class="info-tip" data-tooltip="进程运行超过此秒数后强制终止整棵进程树。设为 0 表示不超时（fire-and-forget，适合长驻服务）">ℹ</span>
+            </label>
+            <input class="form-input" id="task-timeout" type="number" min="0" value="0" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">启用调度</label>
+            <label class="toggle" style="margin-top: 6px;">
+              <input type="checkbox" id="task-enabled" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-modal="modal-task">取消</button>
+        <button class="btn btn-primary" id="btn-save-task">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TASK LOGS MODAL (Phase 4 计划任务执行日志) ═══════════ -->
+  <div class="modal-overlay" id="modal-task-logs">
+    <div class="modal" style="width: 720px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="task-logs-title">执行日志</h2>
+        <button class="modal-close" id="task-logs-close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="task-logs-toolbar">
+          <span class="task-logs-hint">最近 50 条执行记录（按时间倒序）</span>
+          <button class="btn btn-ghost btn-xs" id="task-logs-refresh">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            刷新
+          </button>
+        </div>
+        <div class="task-logs-content" id="task-logs-content">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ AUTOSTART ORDER MODAL (Phase 5 拖拽排序) ═══════════ -->
+  <div class="modal-overlay" id="modal-autostart-order">
+    <div class="modal" style="width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">自启项目排序</h2>
+        <button class="modal-close" data-modal="modal-autostart-order">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="autostart-order-hint">拖拽调整启动顺序（从上到下依次启动）。仅显示已开启自动启动的项目。</p>
+        <div class="autostart-order-list" id="autostart-order-list">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="autostart-order-empty" id="autostart-order-empty" style="display:none;">
+          暂无自启项目。请在项目编辑中勾选「自动启动」。
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-modal="modal-autostart-order">取消</button>
+        <button class="btn btn-primary" id="btn-save-autostart-order">保存顺序</button>
       </div>
     </div>
   </div>

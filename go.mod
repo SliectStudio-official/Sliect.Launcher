@@ -3,6 +3,7 @@ module SliectLauncher
 go 1.24.0
 
 require (
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/shirou/gopsutil/v4 v4.26.6
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/sys v0.41.0

@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	"SliectLauncher/internal/config"
+	"SliectLauncher/internal/filebrowser"
 	"SliectLauncher/internal/model"
+	"SliectLauncher/internal/portmgr"
 	"SliectLauncher/internal/process"
+	"SliectLauncher/internal/scheduler"
 	"SliectLauncher/internal/sysmonitor"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -21,6 +25,9 @@ type App struct {
 	ctx       context.Context
 	cfg       *config.Manager
 	procMgr   *process.Manager
+	schedMgr  *scheduler.Manager
+	portMgr   *portmgr.Manager
+	fileMgr   *filebrowser.Manager
 }
 
 // NewApp 创建 App 实例
@@ -28,17 +35,46 @@ func NewApp() *App {
 	return &App{}
 }
 
+// GetVersion 返回应用版本号（通过 -ldflags 注入的 main.Version）
+func (a *App) GetVersion() string {
+	return Version
+}
+
 // startup 应用启动时调用，初始化配置管理器和进程管理器
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// 显示配置文件路径
+	appData := os.Getenv("APPDATA")
+	if appData == "" {
+		appData = os.Getenv("USERPROFILE") + `\AppData\Roaming`
+	}
+	configPath := appData + `\SliectLauncher\config.yaml`
+	updateSplashStatus("正在读取配置文件: " + configPath)
+	updateSplashProgress(0.10)
 
 	// 初始化配置管理器
 	cfg, err := config.NewManager()
 	if err != nil {
 		log.Printf("配置初始化失败: %v", err)
+		updateSplashStatus("配置加载失败: " + err.Error())
+		updateSplashProgress(1.0)
+		closeSplash()
+		wailsRuntime.WindowShow(ctx)
+		// 致命错误：前端可能无法正常工作，用系统对话框通知用户
+		go func() {
+			wailsRuntime.MessageDialog(ctx, wailsRuntime.MessageDialogOptions{
+				Type:    wailsRuntime.ErrorDialog,
+				Title:   "Sliect Launcher — 配置错误",
+				Message: fmt.Sprintf("配置文件加载失败：\n\n%v\n\n请检查配置文件后重新启动。", err),
+			})
+		}()
 		return
 	}
 	a.cfg = cfg
+
+	updateSplashStatus("正在初始化进程管理器...")
+	updateSplashProgress(0.25)
 
 	// 初始化进程管理器
 	a.procMgr = process.NewManager(cfg)
@@ -49,8 +85,37 @@ func (a *App) startup(ctx context.Context) {
 		wailsRuntime.EventsEmit(ctx, "stop-timeout", projectID)
 	}
 
+	// 注册自启进度回调：实时更新启动画面状态与进度条
+	a.procMgr.OnAutoStartProgress = func(name string, index, total int) {
+		updateSplashStatus(fmt.Sprintf("正在启动项目 (%d/%d): %s", index, total, name))
+		// 自启阶段占 40% 进度（0.40 → 0.80）
+		if total > 0 {
+			p := 0.40 + 0.40*float32(index)/float32(total)
+			updateSplashProgress(p)
+		}
+	}
+
+	updateSplashStatus("正在加载计划任务调度器...")
+	updateSplashProgress(0.35)
+
+	// 初始化计划任务调度器（Phase 4）
+	a.schedMgr = scheduler.NewManager(cfg, a.procMgr)
+	a.schedMgr.Start(ctx)
+
+	// 初始化端口管理器（Phase 4）
+	a.portMgr = portmgr.NewManager(a.procMgr)
+
+	// 初始化文件浏览器（Phase 5 内嵌面板）
+	a.fileMgr = filebrowser.NewManager()
+
+	updateSplashStatus("正在启动自启项目...")
+	updateSplashProgress(0.40)
+
 	// 启动标记为自动启动的项目
 	a.procMgr.StartAutoStartProjects()
+
+	updateSplashStatus("正在同步开机启动设置...")
+	updateSplashProgress(0.90)
 
 	// 同步开机启动注册表（确保设置与实际注册表状态一致）
 	appCfg := a.cfg.GetConfig()
@@ -58,12 +123,22 @@ func (a *App) startup(ctx context.Context) {
 
 	// 初始化系统托盘（在独立 goroutine 中运行，不阻塞主循环）
 	go a.initTray()
+
+	// 启动画面淡出 → 显示主窗口
+	updateSplashProgress(1.0)
+	closeSplash()
+	wailsRuntime.WindowShow(ctx)
 }
 
 // shutdown 应用关闭时调用，停止所有进程
 func (a *App) shutdown(ctx context.Context) {
 	// 清理系统托盘图标
 	removeTrayIcon()
+
+	// 停止计划任务调度器
+	if a.schedMgr != nil {
+		a.schedMgr.Stop()
+	}
 
 	if a.procMgr != nil {
 		a.procMgr.StopAll()
@@ -317,6 +392,48 @@ func (a *App) GetLogs(projectID string, count int) ([]model.LogEntry, error) {
 	return a.procMgr.GetLogs(projectID, count), nil
 }
 
+// GetAllLogs 获取所有项目的日志聚合（Phase 3：全局日志查看器）
+// 按时间戳降序返回，每条带 ProjectName
+func (a *App) GetAllLogs(count int) []model.GlobalLogEntry {
+	if a.procMgr == nil {
+		return []model.GlobalLogEntry{}
+	}
+	if count <= 0 {
+		count = 100
+	}
+	// 构建项目 ID → 名称映射
+	idToName := make(map[string]string)
+	for _, p := range a.cfg.GetProjects() {
+		idToName[p.ID] = p.Name
+	}
+
+	var all []model.GlobalLogEntry
+	for _, p := range a.cfg.GetProjects() {
+		logs := a.procMgr.GetLogs(p.ID, count)
+		for _, l := range logs {
+			name := p.Name
+			if name == "" {
+				name = p.ID
+			}
+			all = append(all, model.GlobalLogEntry{
+				LogEntry:    l,
+				ProjectName: name,
+			})
+		}
+	}
+
+	// 按时间戳降序（最新在前）
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Timestamp > all[j].Timestamp
+	})
+
+	// 限制总数
+	if len(all) > count*5 {
+		all = all[:count*5]
+	}
+	return all
+}
+
 // ClearLogs 清空项目日志
 func (a *App) ClearLogs(projectID string) {
 	if a.procMgr != nil {
@@ -500,6 +617,27 @@ func (a *App) GetTopProcesses() sysmonitor.TopProcesses {
 	return sysmonitor.GetTopProcesses(5)
 }
 
+// GetFullSystemStats 获取完整系统统计（CPU/内存 + 磁盘使用 + 磁盘IO + 网络IO）
+// Phase 2 新增：供仪表盘折线图与系统信息页使用
+func (a *App) GetFullSystemStats() sysmonitor.FullSystemStats {
+	return sysmonitor.GetFullSystemStats()
+}
+
+// GetDiskUsage 获取所有磁盘分区使用情况
+func (a *App) GetDiskUsage() []sysmonitor.DiskUsage {
+	return sysmonitor.GetDiskUsage()
+}
+
+// GetDiskIOStats 获取磁盘 IO 统计（含每秒速率）
+func (a *App) GetDiskIOStats() []sysmonitor.DiskIOStats {
+	return sysmonitor.GetDiskIOStats()
+}
+
+// GetNetIOStats 获取网络 IO 统计（含每秒速率）
+func (a *App) GetNetIOStats() []sysmonitor.NetIOStats {
+	return sysmonitor.GetNetIOStats()
+}
+
 // GetLogStats 获取所有项目的日志级别统计
 func (a *App) GetLogStats() map[string]int {
 	stats := map[string]int{"error": 0, "warn": 0, "info": 0, "debug": 0, "trace": 0}
@@ -524,4 +662,137 @@ func (a *App) GetDebugInfo(projectID string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("进程管理器未初始化")
 	}
 	return a.procMgr.GetDebugInfo(projectID), nil
+}
+
+// ========== 计划任务（Phase 4） ==========
+
+// GetTasks 获取所有计划任务
+func (a *App) GetTasks() ([]model.SchedulerTask, error) {
+	if a.cfg == nil {
+		return nil, fmt.Errorf("配置未初始化")
+	}
+	return a.cfg.GetTasks(), nil
+}
+
+// AddTask 添加计划任务
+func (a *App) AddTask(input model.SchedulerTaskInput) error {
+	if a.schedMgr == nil {
+		return fmt.Errorf("调度器未初始化")
+	}
+	task := model.SchedulerTask{
+		ID:        input.ID,
+		Name:      input.Name,
+		CronExpr:  input.CronExpr,
+		ProjectID: input.ProjectID,
+		Timeout:   input.Timeout,
+		Enabled:   input.Enabled,
+	}
+	return a.schedMgr.AddTask(task)
+}
+
+// UpdateTask 更新计划任务
+func (a *App) UpdateTask(input model.SchedulerTaskInput) error {
+	if a.schedMgr == nil {
+		return fmt.Errorf("调度器未初始化")
+	}
+	task := model.SchedulerTask{
+		ID:        input.ID,
+		Name:      input.Name,
+		CronExpr:  input.CronExpr,
+		ProjectID: input.ProjectID,
+		Timeout:   input.Timeout,
+		Enabled:   input.Enabled,
+	}
+	return a.schedMgr.UpdateTask(task)
+}
+
+// DeleteTask 删除计划任务
+func (a *App) DeleteTask(id string) error {
+	if a.schedMgr == nil {
+		return fmt.Errorf("调度器未初始化")
+	}
+	return a.schedMgr.DeleteTask(id)
+}
+
+// GetTaskLogs 获取计划任务的执行日志（最近 50 条）
+func (a *App) GetTaskLogs(taskID string) ([]model.SchedulerTaskLog, error) {
+	if a.schedMgr == nil {
+		return nil, fmt.Errorf("调度器未初始化")
+	}
+	return a.schedMgr.GetLogs(taskID), nil
+}
+
+// RunTaskNow 立即执行一次计划任务
+func (a *App) RunTaskNow(id string) error {
+	if a.schedMgr == nil {
+		return fmt.Errorf("调度器未初始化")
+	}
+	return a.schedMgr.RunTaskNow(id)
+}
+
+// ========== 端口管理（Phase 4） ==========
+
+// GetPortList 获取所有被占用端口列表
+func (a *App) GetPortList() ([]model.PortInfo, error) {
+	if a.portMgr == nil {
+		return nil, fmt.Errorf("端口管理器未初始化")
+	}
+	return a.portMgr.ListPorts()
+}
+
+// KillPort 终止占用指定端口的进程
+func (a *App) KillPort(port int) error {
+	if a.portMgr == nil {
+		return fmt.Errorf("端口管理器未初始化")
+	}
+	return a.portMgr.KillPort(port)
+}
+
+// ========== 文件浏览（Phase 5 内嵌面板） ==========
+
+// ListDir 列出指定目录下的条目（目录在前，按名称排序）
+// path 为空时返回逻辑驱动器列表
+func (a *App) ListDir(path string) ([]model.DirEntry, error) {
+	if a.fileMgr == nil {
+		return nil, fmt.Errorf("文件浏览器未初始化")
+	}
+	return a.fileMgr.ListDir(path)
+}
+
+// GetDirTree 获取目录树（仅文件夹），用于左栏树形导航
+// maxDepth 限制深度，0 表示仅根节点，默认 2 层
+func (a *App) GetDirTree(root string, maxDepth int) (*model.DirNode, error) {
+	if a.fileMgr == nil {
+		return nil, fmt.Errorf("文件浏览器未初始化")
+	}
+	return a.fileMgr.GetDirTree(root, maxDepth)
+}
+
+// ========== 启动项排序（Phase 5） ==========
+
+// ReorderAutoStartProjects 按给定 ID 顺序更新自启项目的启动顺序
+// 仅影响 AutoStart=true 的项目
+func (a *App) ReorderAutoStartProjects(orderedIDs []string) error {
+	if a.cfg == nil {
+		return fmt.Errorf("配置未初始化")
+	}
+	return a.cfg.ReorderAutoStartProjects(orderedIDs)
+}
+
+// ========== 配置备份恢复（Phase 6） ==========
+
+// ExportConfig 导出当前配置为 YAML 字符串
+func (a *App) ExportConfig() (string, error) {
+	if a.cfg == nil {
+		return "", fmt.Errorf("配置未初始化")
+	}
+	return a.cfg.ExportConfig()
+}
+
+// ImportConfig 从 YAML 字符串导入配置（合并模式，保留运行时状态）
+func (a *App) ImportConfig(yamlContent string) error {
+	if a.cfg == nil {
+		return fmt.Errorf("配置未初始化")
+	}
+	return a.cfg.ImportConfig(yamlContent)
 }

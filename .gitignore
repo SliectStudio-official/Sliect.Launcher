@@ -36,6 +36,9 @@ frontend/package.json.md5
 Thumbs.db
 Desktop.ini
 
+# ---- 工具临时目录 ----
+.workbuddy/
+
 # ---- Go 临时文件 ----
 vendor/
 *.test

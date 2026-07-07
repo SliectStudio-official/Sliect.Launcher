@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,6 +41,7 @@ type Manager struct {
 	appCtx        atomic.Value           // 存储 context.Context，无锁读取避免重入死锁
 	lastLogTime   map[string]time.Time   // 每个项目最后一条日志的时间
 	OnStopTimeout func(projectID string) // 停止超时且无日志活动时的回调
+	OnAutoStartProgress func(name string, index, total int) // 自启进度回调（可选）
 }
 
 // managedProcess 单个被管理的进程实例
@@ -291,13 +293,24 @@ func (m *Manager) StopGroup(groupID string) []string {
 	return stopped
 }
 
-// StartAutoStartProjects 启动所有标记为自动启动的项目
+// StartAutoStartProjects 启动所有标记为自动启动的项目（按 SortOrder 升序启动）
 func (m *Manager) StartAutoStartProjects() {
 	projects := m.cfg.GetProjects()
+	var autoProjects []model.Project
 	for _, p := range projects {
 		if p.AutoStart {
-			m.StartProject(p.ID)
+			autoProjects = append(autoProjects, p)
 		}
+	}
+	sort.Slice(autoProjects, func(i, j int) bool {
+		return autoProjects[i].SortOrder < autoProjects[j].SortOrder
+	})
+	total := len(autoProjects)
+	for i, p := range autoProjects {
+		if m.OnAutoStartProgress != nil {
+			m.OnAutoStartProgress(p.Name, i+1, total)
+		}
+		m.StartProject(p.ID)
 	}
 }
 
@@ -802,6 +815,18 @@ func (m *Manager) watchProcess(mp *managedProcess, project *model.Project) {
 	shouldRestart := (project.AutoRestart || m.cfg.GetConfig().AutoRestartGlobal) &&
 		(project.MaxRestartCount <= 0 || mp.restartCount < project.MaxRestartCount)
 
+	// Phase 6：推送崩溃事件到通知中心
+	if ctx, ok := m.appCtx.Load().(context.Context); ok && ctx != nil {
+		wailsRuntime.EventsEmit(ctx, "process-crashed", map[string]interface{}{
+			"projectId":    project.ID,
+			"name":         project.Name,
+			"exitTime":     time.Now().UnixMilli(),
+			"exitMsg":      exitMsg,
+			"willRestart":  shouldRestart,
+			"restartCount": mp.restartCount,
+		})
+	}
+
 	if shouldRestart {
 		delay := time.Duration(project.RestartDelay) * time.Second
 		if delay <= 0 {
@@ -864,6 +889,16 @@ func (m *Manager) watchProcess(mp *managedProcess, project *model.Project) {
 			m.startProcessLocked(p)
 		}
 		m.mu.Unlock()
+
+		// Phase 6：推送自动重启事件到通知中心
+		if ctx, ok := m.appCtx.Load().(context.Context); ok && ctx != nil {
+			wailsRuntime.EventsEmit(ctx, "process-restarted", map[string]interface{}{
+				"projectId":    project.ID,
+				"name":         project.Name,
+				"restartTime":  time.Now().UnixMilli(),
+				"restartCount": mp.restartCount,
+			})
+		}
 	}
 }
 
