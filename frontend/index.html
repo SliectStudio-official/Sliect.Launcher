@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sliect Launcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;590;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-icon">
+            <img src="/logo.png" alt="Sliect Launcher" />
+          </div>
+          <span class="sidebar-brand-name">启动台</span>
+        </div>
+        <div class="sidebar-search">
+          <svg class="sidebar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="sidebar-search" placeholder="搜索项目..." />
+        </div>
+      </div>
+
+      <div class="sidebar-actions">
+        <button class="btn btn-primary btn-sm" id="btn-add-project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          添加项目
+        </button>
+        <button class="btn btn-ghost btn-sm" id="btn-add-group">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          分组
+        </button>
+      </div>
+
+      <div class="sidebar-projects" id="sidebar-projects">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="sidebar-nav">
+        <div class="sidebar-nav-item" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>设置</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══════════ MAIN CONTENT ═══════════ -->
+    <main class="main-content">
+
+      <!-- ── Dashboard View ── -->
+      <div id="view-dashboard" class="view active">
+        <div class="dashboard-toolbar">
+          <div class="dashboard-toolbar-left">
+            <h1 class="topbar-title">控制台</h1>
+          </div>
+          <div class="dashboard-toolbar-right">
+            <button class="btn btn-success btn-sm" id="btn-start-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              全部启动
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-stop-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              全部停止
+            </button>
+          </div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="stat-cards" id="stat-cards">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- System Monitor -->
+        <div class="system-monitor" id="system-monitor">
+          <div class="monitor-card">
+            <div class="monitor-ring">
+              <svg viewBox="0 0 88 88">
+                <circle class="monitor-ring-bg" cx="44" cy="44" r="38"/>
+                <circle class="monitor-ring-fill cpu" id="cpu-ring" cx="44" cy="44" r="38"
+                  stroke-dasharray="238.76" stroke-dashoffset="238.76"/>
+              </svg>
+              <div class="monitor-ring-label">
+                <span class="monitor-ring-value" id="cpu-value">0%</span>
+                <span class="monitor-ring-unit">CPU</span>
+              </div>
+            </div>
+            <span class="monitor-card-title" id="cpu-cores-label">处理器</span>
+          </div>
+
+          <div class="monitor-card">
+            <div class="monitor-ring">
+              <svg viewBox="0 0 88 88">
+                <circle class="monitor-ring-bg" cx="44" cy="44" r="38"/>
+                <circle class="monitor-ring-fill memory" id="mem-ring" cx="44" cy="44" r="38"
+                  stroke-dasharray="238.76" stroke-dashoffset="238.76"/>
+              </svg>
+              <div class="monitor-ring-label">
+                <span class="monitor-ring-value" id="mem-value">0%</span>
+                <span class="monitor-ring-unit">内存</span>
+              </div>
+            </div>
+            <span class="monitor-card-title" id="mem-detail-label">内存</span>
+          </div>
+
+          <div class="log-stats-card">
+            <div class="log-stats-title">日志分布</div>
+            <div class="log-stats-chips" id="log-stats-chips">
+              <!-- Rendered by JS -->
+            </div>
+            <div class="refresh-speed-control">
+              <div class="refresh-speed-label">数据刷新速度</div>
+              <div class="refresh-speed-options" id="refresh-speed-options">
+                <button class="refresh-speed-btn" data-speed="100">0.1s</button>
+                <button class="refresh-speed-btn" data-speed="500">0.5s</button>
+                <button class="refresh-speed-btn" data-speed="1000">1s</button>
+                <button class="refresh-speed-btn active" data-speed="2000">2s</button>
+                <button class="refresh-speed-btn" data-speed="5000">5s</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Processes -->
+        <div class="top-processes" id="top-processes">
+          <div class="top-process-card">
+            <div class="top-process-header">
+              <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/></svg>
+              <span class="top-process-title">CPU 占用 Top 5</span>
+            </div>
+            <div id="top-cpu-list">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+          <div class="top-process-card">
+            <div class="top-process-header">
+              <svg class="top-process-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
+              <span class="top-process-title">内存占用 Top 5</span>
+            </div>
+            <div id="top-mem-list">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Grid -->
+        <div>
+          <div class="section-header">
+            <h2 class="section-title">项目概览</h2>
+          </div>
+          <div class="project-grid" id="project-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Project Detail View ── -->
+      <div id="view-project" class="view">
+        <div class="detail-header">
+          <div class="detail-header-left">
+            <button class="btn btn-ghost btn-icon" id="btn-back-dashboard" aria-label="返回控制台">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <h1 class="detail-project-name" id="detail-name">—</h1>
+            <span class="detail-status-badge" id="detail-status">
+              <span class="status-dot"></span>
+              <span>—</span>
+            </span>
+          </div>
+          <div class="detail-actions" id="detail-actions">
+            <button class="btn btn-success btn-sm" id="btn-detail-start">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              启动
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-detail-stop" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              停止
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-detail-restart" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              重启
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-detail-edit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              编辑
+            </button>
+            <button class="btn btn-danger-ghost btn-sm" id="btn-detail-delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              删除
+            </button>
+          </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid" id="info-grid">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- Log Panel -->
+        <div class="log-panel">
+          <div class="log-toolbar">
+            <div class="log-toolbar-left">
+              <div class="log-filter-group" id="log-level-filters">
+                <button class="log-filter-btn active" data-level="">全部</button>
+                <button class="log-filter-btn error" data-level="error">ERROR</button>
+                <button class="log-filter-btn warn" data-level="warn">WARN</button>
+                <button class="log-filter-btn" data-level="info">INFO</button>
+                <button class="log-filter-btn" data-level="debug">DEBUG</button>
+              </div>
+            </div>
+            <div class="log-toolbar-right">
+              <select class="log-source-select" id="log-source-filter">
+                <option value="">全部来源</option>
+                <option value="stdout">stdout</option>
+                <option value="stderr">stderr</option>
+                <option value="system">system</option>
+              </select>
+              <button class="btn btn-ghost btn-xs btn-terminal" id="btn-toggle-terminal" title="终端">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              </button>
+              <button class="btn btn-ghost btn-xs" id="btn-clear-logs">清空</button>
+            </div>
+          </div>
+          <div class="log-content" id="log-content">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="terminal-panel" id="terminal-panel">
+            <div class="terminal-output" id="terminal-output"></div>
+            <div class="terminal-input-bar">
+              <span class="terminal-prompt">&gt;</span>
+              <input type="text" class="terminal-input" id="terminal-input" placeholder="输入命令..." autocomplete="off" spellcheck="false" />
+            </div>
+          </div>
+          <div class="log-command-bar" id="log-command-bar">
+            <span class="log-command-prompt">&gt;</span>
+            <input type="text" class="log-command-input" id="log-command-input" placeholder="输入命令发送到进程..." autocomplete="off" spellcheck="false" />
+            <button class="btn btn-ghost btn-xs" id="btn-send-command">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings View ── -->
+      <div id="view-settings" class="view">
+        <div class="detail-header" style="margin-bottom: 24px;">
+          <div class="detail-header-left">
+            <button class="btn btn-ghost btn-icon" id="btn-back-from-settings" aria-label="返回控制台">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <h1 class="detail-project-name">设置</h1>
+          </div>
+        </div>
+
+        <div class="settings-layout">
+          <div class="settings-container">
+          <!-- Appearance -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">外观</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">主题</div>
+                <div class="setting-desc">选择应用的外观主题</div>
+              </div>
+              <div class="theme-options">
+                <button class="theme-option light" id="theme-light">
+                  <div class="theme-option-preview"></div>
+                  浅色
+                </button>
+                <button class="theme-option dark" id="theme-dark">
+                  <div class="theme-option-preview"></div>
+                  深色
+                </button>
+                <button class="theme-option auto" id="theme-auto">
+                  <div class="theme-option-preview"></div>
+                  跟随系统
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- System -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">系统</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">最小化到系统托盘</div>
+                <div class="setting-desc">关闭窗口时最小化到系统托盘而非退出程序</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-minimize-tray" checked />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">开机启动</div>
+                <div class="setting-desc">系统启动时自动运行 Sliect Launcher</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-start-boot" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Advanced -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">高级</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">全局自动重启</div>
+                <div class="setting-desc">进程崩溃后自动重启所有项目</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-auto-restart" checked />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">全局最大重启次数</div>
+                <div class="setting-desc">自动重启的最大次数限制，达到后停止重启。设为 0 表示不限制</div>
+              </div>
+              <input class="form-input setting-number-input" id="setting-max-restart" type="number" min="0" value="5" />
+            </div>
+          </div>
+
+          <!-- Port Detection Tool -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">端口检测</h3>
+            <div class="setting-row port-check-row">
+              <div class="setting-info">
+                <div class="setting-label">检测端口占用</div>
+                <div class="setting-desc">输入端口号，查看哪个进程正在占用该端口</div>
+              </div>
+              <div class="port-check-input">
+                <input class="form-input" id="port-check-input" type="number" placeholder="端口号" min="1" max="65535" />
+                <button class="btn btn-primary btn-sm" id="btn-check-port">检测</button>
+              </div>
+            </div>
+            <div class="port-check-result" id="port-check-result" style="display:none;"></div>
+          </div>
+
+          </div><!-- /settings-container -->
+
+          <!-- Software Info -->
+          <div class="settings-info">
+            <div class="software-card">
+              <img class="software-logo" src="/logo.png" alt="Sliect Launcher" />
+              <h2 class="software-name">Sliect Launcher</h2>
+              <p class="software-subtitle">启动台</p>
+              <div class="software-version">
+                <span class="version-label">版本</span>
+                <span class="version-value">1.0.260706.2000</span>
+              </div>
+              <div class="software-divider"></div>
+              <div class="software-team">
+                <span class="team-label">开发团队</span>
+                <img class="team-logo team-logo-light" src="/sliectstudio-light.svg" alt="SliectStudio" />
+                <img class="team-logo team-logo-dark" src="/sliectstudio-dark.svg" alt="SliectStudio" />
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /settings-layout -->
+        </div><!-- /view-settings -->
+
+    </main>
+  </div><!-- /app -->
+
+  <!-- ═══════════ PROJECT MODAL ═══════════ -->
+  <div class="modal-overlay" id="modal-project">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-project-title">添加项目</h2>
+        <button class="modal-close" data-modal="modal-project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">
+              项目 ID <span class="required">*</span>
+              <span class="info-tip" data-tooltip="唯一标识符，仅限英文小写、数字和短横线，创建后不可修改">ℹ</span>
+            </label>
+            <input class="form-input" id="proj-id" placeholder="my-project" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              名称 <span class="required">*</span>
+              <span class="info-tip" data-tooltip="项目的显示名称，支持中文和任意字符">ℹ</span>
+            </label>
+            <input class="form-input" id="proj-name" placeholder="我的项目" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">
+              类型
+              <span class="info-tip" data-tooltip="项目使用的编程语言/运行时，影响图标显示和日志解析方式">ℹ</span>
+            </label>
+            <select class="form-select" id="proj-type">
+              <option value="go">Go</option>
+              <option value="node">Node.js</option>
+              <option value="python">Python</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              端口
+              <span class="info-tip" data-tooltip="项目监听的网络端口号，仅用于信息展示，非必填">ℹ</span>
+            </label>
+            <input class="form-input" id="proj-port" placeholder="8080" type="number" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            启动命令 <span class="required">*</span>
+            <span class="info-tip" data-tooltip="启动项目的命令或可执行文件路径。支持 .exe/.bat/.cmd/.ps1，也可输入如 npm run dev 等命令。点击「浏览」可选择文件">ℹ</span>
+          </label>
+          <div class="form-input-group">
+            <input class="form-input" id="proj-command" placeholder="可执行文件路径或命令" />
+            <button class="btn btn-ghost btn-sm" id="btn-browse-command">浏览</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            命令参数
+            <span class="info-tip" data-tooltip="传给启动命令的额外参数，用空格分隔。例如 --port 8080 --env dev">ℹ</span>
+          </label>
+          <input class="form-input" id="proj-args" placeholder="用空格分隔，如 --port 8080 --env dev" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            工作目录
+            <span class="info-tip" data-tooltip="命令执行时的当前目录。通常设置为项目根目录，留空则使用程序默认路径">ℹ</span>
+          </label>
+          <div class="form-input-group">
+            <input class="form-input" id="proj-workdir" placeholder="项目所在的文件夹路径" />
+            <button class="btn btn-ghost btn-sm" id="btn-browse-workdir">浏览</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            分组
+            <span class="info-tip" data-tooltip="将项目归入分组，方便批量启动/停止。可在侧边栏管理分组">ℹ</span>
+          </label>
+          <select class="form-select" id="proj-group">
+            <option value="">无分组</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-checkbox">
+            <input type="checkbox" id="proj-autostart" />
+            自动启动
+            <span class="info-tip" data-tooltip="启动器打开时自动启动此项目">ℹ</span>
+          </label>
+          <label class="form-checkbox">
+            <input type="checkbox" id="proj-autorestart" checked />
+            自动重启
+            <span class="info-tip" data-tooltip="进程异常退出时自动重启，可限制最大重启次数">ℹ</span>
+          </label>
+        </div>
+        <div class="form-row" style="margin-top: 12px;">
+          <div class="form-group">
+            <label class="form-label">
+              最大重启次数
+              <span class="info-tip" data-tooltip="自动重启的最大次数限制，达到后停止重启。设为 0 表示不限制">ℹ</span>
+            </label>
+            <input class="form-input" id="proj-maxrestart" type="number" value="5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              重启延迟 (秒)
+              <span class="info-tip" data-tooltip="进程退出后等待多少秒再重启，防止快速重启导致资源占用">ℹ</span>
+            </label>
+            <input class="form-input" id="proj-restartdelay" type="number" value="3" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-modal="modal-project">取消</button>
+        <button class="btn btn-primary" id="btn-save-project">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ GROUP MODAL ═══════════ -->
+  <div class="modal-overlay" id="modal-group">
+    <div class="modal" style="width: 380px;">
+      <div class="modal-header">
+        <h2 class="modal-title">新建分组</h2>
+        <button class="modal-close" data-modal="modal-group">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">分组 ID</label>
+          <input class="form-input" id="group-id" placeholder="唯一标识符" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">分组名称</label>
+          <input class="form-input" id="group-name" placeholder="显示名称" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-modal="modal-group">取消</button>
+        <button class="btn btn-primary" id="btn-save-group">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DIALOG MODAL (reusable confirm/alert) ═══════════ -->
+  <div class="modal-overlay" id="modal-dialog">
+    <div class="modal dialog-modal">
+      <div class="dialog-body">
+        <div class="dialog-icon" id="dialog-icon"></div>
+        <h3 class="dialog-title" id="dialog-title">提示</h3>
+        <p class="dialog-message" id="dialog-message"></p>
+      </div>
+      <div class="modal-footer dialog-footer">
+        <button class="btn btn-ghost" id="dialog-cancel">取消</button>
+        <button class="btn btn-primary" id="dialog-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TOAST CONTAINER ═══════════ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ═══════════ GLOBAL TOOLTIP ═══════════ -->
+  <div id="global-tooltip" class="global-tooltip"></div>
+
+  <script src="./src/main.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+# ---- 编译产物 ----
+build/bin/
+*.exe
+*.exe~
+
+# ---- 依赖 ----
+node_modules/
+frontend/node_modules/
+
+# ---- 前端构建输出 ----
+frontend/dist/
+
+# ---- Wails 自动生成的胶水代码 ----
+frontend/wailsjs/
+
+# ---- 自动生成的校验文件 ----
+frontend/package.json.md5
+
+# ---- 日志 ----
+*.log
+
+# ---- 环境变量 & 密钥 ----
+.env
+.env.*
+!.env.example
+
+# ---- IDE / 编辑器 ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- OS 文件 ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- Go 临时文件 ----
+vendor/
+*.test
+*.out
