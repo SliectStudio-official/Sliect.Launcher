@@ -72,6 +72,8 @@ export async function initAPI() {
             // Phase 6 新增：配置备份恢复
             ExportConfig: () => app.ExportConfig(),
             ImportConfig: (yamlContent) => app.ImportConfig(yamlContent),
+            // 启动错误查询（前端就绪后拉取缓存的自启失败错误）
+            GetStartupErrors: () => app.GetStartupErrors(),
             // 其他
             OpenURL: (url) => app.OpenURL(url),
             CheckPortInUse: (port) => app.CheckPortInUse(port),
@@ -339,5 +341,6 @@ function createMockAPI() {
         ImportConfig: async (yamlContent) => {
             console.log('Mock: import config', yamlContent.substring(0, 100) + '...');
         },
+        GetStartupErrors: async () => [],
     };
 }

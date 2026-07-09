@@ -52,7 +52,7 @@ import (
 
 // Version 格式: 大版本.yyMMdd.HHmm（大版本手动管理，详细版本为构建时间）
 // 可通过 -ldflags "-X main.Version=x.y.yyMMdd.HHmm" 在编译时注入
-var Version = "2.0.260708.0522"
+var Version = "2.1.260709.1342"
 
 // ======================== 嵌入资源 ========================
 

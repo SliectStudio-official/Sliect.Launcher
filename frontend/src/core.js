@@ -235,3 +235,72 @@ export function setImmediateStatus(id, status) {
         }
     });
 }
+
+// ========== 通知中心（共享数据） ==========
+// notifications 数组由 core.js 统一管理，main.js 负责渲染，所有模块通过 pushNotification 推送
+export const notifications = []; // {id, type, title, message, time, read, projectId, name, timeline}
+
+export function pushNotification(n) {
+    // 确保时间字段存在（合并路径依赖此字段）
+    if (!n.time) n.time = Date.now();
+    // 如果通知带 projectId 且已有同项目的通知，合并为时间线
+    if (n.projectId) {
+        const existing = notifications.find(x => x.projectId === n.projectId && x.type === n.type);
+        if (existing) {
+            if (!existing.timeline) existing.timeline = [];
+            existing.timeline.push({ time: n.time, event: n.title, message: n.message });
+            existing.message = n.message; // 更新主消息为最新
+            existing.time = n.time;       // 更新主时间为最新
+            updateBellBadge();
+            return;
+        }
+    }
+    notifications.unshift({
+        id: Date.now() + Math.random(), // 避免快速连发 id 冲突
+        read: false,
+        time: n.time,
+        timeline: [],
+        ...n,
+    });
+    updateBellBadge();
+}
+
+export function updateBellBadge() {
+    const badge = document.getElementById('nav-bell-badge');
+    const unread = notifications.filter(n => !n.read).length;
+    if (badge) {
+        badge.textContent = unread > 99 ? '99+' : unread;
+        badge.style.display = unread > 0 ? '' : 'none';
+    }
+}
+
+export function getNotifications() {
+    return notifications;
+}
+
+// 便捷方法：推送项目操作通知（统一格式，带时间轴）
+export function notifyProjectAction(action, project, success, error) {
+    const actionLabels = {
+        start: '启动', stop: '停止', restart: '重启', 'force-stop': '强制终止',
+    };
+    const label = actionLabels[action] || action;
+    const name = (typeof project === 'string') ? project : (project?.name || project?.id || '未知项目');
+    const projectId = (typeof project === 'string') ? null : project?.id;
+    const now = Date.now();
+    const timeStr = new Date(now).toLocaleString('zh-CN', { hour12: false });
+    const successMsg = success ? '成功' : `失败: ${error || '未知错误'}`;
+
+    pushNotification({
+        type: success ? 'success' : 'error',
+        title: `${label}${success ? '成功' : '失败'}`,
+        projectId: projectId,
+        name: name,
+        time: now,
+        message: `「${name}」${label}${successMsg}`,
+        timeline: [{
+            time: now,
+            event: label,
+            message: `${timeStr} - ${successMsg}`,
+        }],
+    });
+}

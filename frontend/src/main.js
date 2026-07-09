@@ -1,7 +1,7 @@
 // ========== Sliect Launcher — 主入口 ==========
 // 负责：模块编排、顶部导航、底部状态栏、全局事件、Wails 事件订阅
 
-import { state, applyTheme, getCurrentSavedTheme, setCurrentSavedTheme, toast, showConfirm, showDialog, esc } from './core.js';
+import { state, applyTheme, getCurrentSavedTheme, setCurrentSavedTheme, toast, showConfirm, showDialog, esc, pushNotification, getNotifications, updateBellBadge, notifyProjectAction } from './core.js';
 import { initAPI, getAPI, getWailsRuntime } from './api-bridge.js';
 import {
     renderDashboard, renderStatCards, bindDashboardEvents,
@@ -119,39 +119,88 @@ async function refreshStatusBar() {
     }
 }
 
-// ========== 通知中心（Phase 6 完整实现，此处先占位） ==========
-const notifications = []; // {id, type, title, message, time, read, detail, timeline}
+// ========== 通知中心（数据由 core.js 管理，此处负责渲染） ==========
 
-export function pushNotification(n) {
-    // Phase 6：如果通知带 projectId 且已有同项目的崩溃通知，合并为时间线
-    if (n.projectId) {
-        const existing = notifications.find(x => x.projectId === n.projectId && x.type === 'error');
-        if (existing) {
-            // 追加到现有通知的时间线
-            if (!existing.timeline) existing.timeline = [];
-            existing.timeline.push({ time: n.time, event: n.title, message: n.message });
-            existing.message = n.message; // 更新主消息为最新
-            updateBellBadge();
-            return;
-        }
+// 滚动时间提示元素（懒创建）
+let scrollTooltip = null;
+let scrollDragging = false;
+let scrollHideTimer = null;
+
+function getScrollTooltip() {
+    if (!scrollTooltip) {
+        scrollTooltip = document.createElement('div');
+        scrollTooltip.className = 'scroll-tooltip';
+        document.body.appendChild(scrollTooltip);
     }
-    notifications.unshift({
-        id: Date.now() + Math.random(), // 避免快速连发 id 冲突
-        read: false,
-        time: new Date().toISOString(),
-        timeline: [],
-        ...n,
-    });
-    updateBellBadge();
+    return scrollTooltip;
 }
 
-function updateBellBadge() {
-    const badge = document.getElementById('nav-bell-badge');
-    const unread = notifications.filter(n => !n.read).length;
-    if (badge) {
-        badge.textContent = unread > 99 ? '99+' : unread;
-        badge.style.display = unread > 0 ? '' : 'none';
+function showScrollTooltip(list, mouseY) {
+    const tip = getScrollTooltip();
+    // 找到当前可见区域中第一个 notification-item 的时间
+    const items = list.querySelectorAll('.notification-item');
+    if (!items.length) return;
+    const listRect = list.getBoundingClientRect();
+    let targetTime = null;
+    for (const item of items) {
+        const rect = item.getBoundingClientRect();
+        // 找到第一个顶部在可见区域内的项
+        if (rect.bottom >= listRect.top + 4 && rect.top <= listRect.bottom) {
+            const timeEl = item.querySelector('.notification-time');
+            if (timeEl) {
+                targetTime = timeEl.textContent;
+            }
+            break;
+        }
     }
+    if (targetTime) {
+        tip.textContent = targetTime;
+        tip.style.left = (listRect.right) + 'px';
+        tip.style.top = (mouseY - 12) + 'px';
+        tip.classList.add('visible');
+    }
+}
+
+function hideScrollTooltip() {
+    if (scrollTooltip) scrollTooltip.classList.remove('visible');
+}
+
+function bindListScrollTooltip(list) {
+    // 鼠标在滚动条区域按下 → 开始拖动
+    list.addEventListener('mousedown', (e) => {
+        const rect = list.getBoundingClientRect();
+        const scrollbarWidth = 6; // 与 CSS 中 webkit-scrollbar width 一致
+        // 判断点击是否在右侧滚动条区域
+        if (e.clientX >= rect.right - scrollbarWidth && e.clientX <= rect.right) {
+            scrollDragging = true;
+            clearTimeout(scrollHideTimer);
+            showScrollTooltip(list, e.clientY);
+        }
+    });
+    // 拖动中 → 跟随鼠标
+    list.addEventListener('scroll', () => {
+        if (scrollDragging) {
+            // 从滚动位置推算鼠标 Y（近似）
+            const rect = list.getBoundingClientRect();
+            const scrollTop = list.scrollTop;
+            const maxScroll = list.scrollHeight - list.clientHeight;
+            const thumbHeight = Math.max(30, (list.clientHeight / list.scrollHeight) * list.clientHeight);
+            const thumbTop = maxScroll > 0 ? (scrollTop / maxScroll) * (list.clientHeight - thumbHeight) : 0;
+            const mouseY = rect.top + thumbTop + thumbHeight / 2;
+            showScrollTooltip(list, mouseY);
+        }
+    });
+    // 全局 mouseup → 停止拖动，延迟隐藏
+    document.addEventListener('mouseup', () => {
+        if (scrollDragging) {
+            scrollDragging = false;
+            scrollHideTimer = setTimeout(hideScrollTooltip, 400);
+        }
+    });
+    // 鼠标离开列表 → 隐藏
+    list.addEventListener('mouseleave', () => {
+        if (!scrollDragging) hideScrollTooltip();
+    });
 }
 
 function openNotificationCenter() {
@@ -159,6 +208,7 @@ function openNotificationCenter() {
     if (!panel) return;
     const list = document.getElementById('notification-list');
     if (!list) return;
+    const notifications = getNotifications();
     if (notifications.length === 0) {
         list.innerHTML = `<div class="notification-empty">暂无通知</div>`;
     } else {
@@ -201,6 +251,12 @@ function openNotificationCenter() {
                 }
             });
         });
+
+        // 绑定滚动条拖动时间提示（仅绑定一次）
+        if (!list.dataset.scrollBound) {
+            bindListScrollTooltip(list);
+            list.dataset.scrollBound = '1';
+        }
     }
     panel.classList.add('active');
 }
@@ -291,9 +347,27 @@ function bindWailsEvents() {
     const rt = getWailsRuntime();
     if (!rt) return;
 
-    // 实时日志
+    // 实时日志（ERROR 级别同时推送到通知中心）
     rt.EventsOn('log', (entry) => {
         appendLogEntry(entry);
+        if (entry.level === 'error') {
+            const p = state.projects.find(x => x.id === entry.projectId);
+            const name = p ? p.name : entry.projectId;
+            const now = entry.timestamp || Date.now();
+            pushNotification({
+                type: 'error',
+                title: '错误日志',
+                projectId: entry.projectId,
+                name: name,
+                time: now,
+                message: `「${name}」${entry.text}`,
+                timeline: [{
+                    time: now,
+                    event: 'ERROR',
+                    message: new Date(now).toLocaleString('zh-CN', { hour12: false }) + ' - ' + entry.text,
+                }],
+            });
+        }
     });
 
     // 停止超时：进程 5 秒内未退出且无日志活动，弹窗询问是否强杀
@@ -306,8 +380,10 @@ function bindWailsEvents() {
                 const api = getAPI();
                 await api.ForceStopProject(projectID);
                 toast(`${name} 已强制终止`, 'info');
+                notifyProjectAction('force-stop', p || projectID, true);
             } catch (e) {
                 toast('强制终止失败: ' + (e.message || e), 'error');
+                notifyProjectAction('force-stop', p || projectID, false, e.message || e);
             }
             await refreshData();
         }
@@ -374,6 +450,24 @@ function bindWailsEvents() {
             }],
         });
     });
+
+    // 自启项目启动失败事件 → toast + 通知中心（带时间轴）
+    rt.EventsOn('autostart-error', (data) => {
+        const errTime = Date.now();
+        toast(`自启项目「${data.projectName || data.projectId}」启动失败: ${data.error || '未知错误'}`, 'error');
+        pushNotification({
+            type: 'error',
+            title: '自启失败',
+            projectId: data.projectId,
+            name: data.projectName || data.projectId,
+            message: `「${data.projectName || data.projectId}」启动失败: ${data.error || '未知错误'}`,
+            timeline: [{
+                time: errTime,
+                event: '失败',
+                message: new Date(errTime).toLocaleString('zh-CN', { hour12: false }) + ' - ' + (data.error || '未知错误'),
+            }],
+        });
+    });
 }
 
 // ========== 启动 ==========
@@ -403,6 +497,29 @@ async function main() {
     bindPortsEvents();
     bindGlobalEvents();
     bindWailsEvents();
+
+    // 拉取启动时缓存的自启失败错误（启动时前端事件监听尚未就绪，EventsEmit 会丢失，通过此 API 补发）
+    try {
+        const api = getAPI();
+        const errors = await api.GetStartupErrors();
+        if (errors && errors.length > 0) {
+            errors.forEach(err => {
+                pushNotification({
+                    type: 'error',
+                    title: '自启失败',
+                    projectId: err.projectId,
+                    name: err.projectName || err.projectId,
+                    message: `「${err.projectName || err.projectId}」启动失败: ${err.error}`,
+                    timeline: [{
+                        time: err.time || Date.now(),
+                        event: '失败',
+                        message: new Date(err.time || Date.now()).toLocaleString('zh-CN', { hour12: false }) + ' - ' + err.error,
+                    }],
+                });
+            });
+            toast(`${errors.length} 个自启项目启动失败，请查看通知中心`, 'error');
+        }
+    } catch (e) { /* ignore */ }
 
     // 注册轮询钩子
     registerPollHook(refreshProjectsForPoll);

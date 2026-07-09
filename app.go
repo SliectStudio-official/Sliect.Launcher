@@ -7,6 +7,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"SliectLauncher/internal/config"
 	"SliectLauncher/internal/filebrowser"
@@ -22,12 +24,24 @@ import (
 
 // App 是 Wails 前端绑定的主结构体，所有暴露给前端的方法都挂在这里
 type App struct {
-	ctx       context.Context
-	cfg       *config.Manager
-	procMgr   *process.Manager
-	schedMgr  *scheduler.Manager
-	portMgr   *portmgr.Manager
-	fileMgr   *filebrowser.Manager
+	ctx      context.Context
+	cfg      *config.Manager
+	procMgr  *process.Manager
+	schedMgr *scheduler.Manager
+	portMgr  *portmgr.Manager
+	fileMgr  *filebrowser.Manager
+
+	// 启动时缓存的自启错误（前端就绪后通过 GetStartupErrors 拉取，避免事件丢失）
+	startupErrorsMu sync.Mutex
+	startupErrors   []StartupError
+}
+
+// StartupError 自启项目启动失败的错误记录
+type StartupError struct {
+	ProjectID   string `json:"projectId"`
+	ProjectName string `json:"projectName"`
+	Error       string `json:"error"`
+	Time        int64  `json:"time"`
 }
 
 // NewApp 创建 App 实例
@@ -93,6 +107,18 @@ func (a *App) startup(ctx context.Context) {
 			p := 0.40 + 0.40*float32(index)/float32(total)
 			updateSplashProgress(p)
 		}
+	}
+
+	// 注册自启失败回调：缓存错误供前端就绪后查询（启动时前端事件监听尚未就绪，EventsEmit 会丢失）
+	a.procMgr.OnAutoStartError = func(projectID, projectName, errMsg string) {
+		a.startupErrorsMu.Lock()
+		a.startupErrors = append(a.startupErrors, StartupError{
+			ProjectID:   projectID,
+			ProjectName: projectName,
+			Error:       errMsg,
+			Time:        time.Now().UnixMilli(),
+		})
+		a.startupErrorsMu.Unlock()
 	}
 
 	updateSplashStatus("正在加载计划任务调度器...")
@@ -766,6 +792,17 @@ func (a *App) GetDirTree(root string, maxDepth int) (*model.DirNode, error) {
 		return nil, fmt.Errorf("文件浏览器未初始化")
 	}
 	return a.fileMgr.GetDirTree(root, maxDepth)
+}
+
+// ========== 启动错误查询 ==========
+
+// GetStartupErrors 返回并清空启动时缓存的自启错误（前端就绪后调用一次）
+func (a *App) GetStartupErrors() []StartupError {
+	a.startupErrorsMu.Lock()
+	defer a.startupErrorsMu.Unlock()
+	errs := a.startupErrors
+	a.startupErrors = nil
+	return errs
 }
 
 // ========== 启动项排序（Phase 5） ==========

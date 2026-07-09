@@ -2,6 +2,15 @@
    Sliect Launcher — Airtable-Inspired Design System
    ═══════════════════════════════════════════════════════ */
 
+/* ── OPPO Sans 4.0 全局字体 ── */
+@font-face {
+  font-family: 'OPPO Sans';
+  src: url('./assets/fonts/OPPOSans.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── Seed Tokens ── */
 :root {
   /* Core seeds */
@@ -105,7 +114,7 @@
   --sp-12: 48px;
 
   /* Typography */
-  --font-sans: "Inter", -apple-system, system-ui, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --font-sans: "OPPO Sans", "Inter", -apple-system, system-ui, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, ui-monospace, monospace;
   --sidebar-w: 260px;
   --topbar-h: 56px;
@@ -2367,6 +2376,49 @@ input.form-input.setting-number-input {
   text-align: center;
   color: var(--fg-weak);
   font-size: 13px;
+}
+
+/* 通知列表自定义滚动条 */
+.notification-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+.notification-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: var(--radius-full);
+}
+.notification-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-full);
+  transition: background var(--duration) var(--ease);
+}
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-weak);
+}
+
+/* 滚动时间提示（拖动滚动条时跟随鼠标） */
+.scroll-tooltip {
+  position: fixed;
+  z-index: 200;
+  background: var(--fg);
+  color: var(--bg);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity var(--duration) var(--ease);
+  box-shadow: var(--shadow-md);
+}
+.scroll-tooltip.visible {
+  opacity: 1;
 }
 
 /* ── 占位状态（Placeholder State） ── */

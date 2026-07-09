@@ -22,9 +22,9 @@ import (
 	"SliectLauncher/internal/config"
 	"SliectLauncher/internal/model"
 
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/shirou/gopsutil/v4/process"
 	netos "github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
@@ -34,30 +34,31 @@ type LogCallback func(entry model.LogEntry)
 
 // Manager 进程管理器，管理所有被管项目的生命周期
 type Manager struct {
-	mu            sync.RWMutex
-	cfg           *config.Manager
-	processes     map[string]*managedProcess
-	logBuf        *LogBuffer
-	appCtx        atomic.Value           // 存储 context.Context，无锁读取避免重入死锁
-	lastLogTime   map[string]time.Time   // 每个项目最后一条日志的时间
-	OnStopTimeout func(projectID string) // 停止超时且无日志活动时的回调
-	OnAutoStartProgress func(name string, index, total int) // 自启进度回调（可选）
+	mu                  sync.RWMutex
+	cfg                 *config.Manager
+	processes           map[string]*managedProcess
+	logBuf              *LogBuffer
+	appCtx              atomic.Value                                // 存储 context.Context，无锁读取避免重入死锁
+	lastLogTime         map[string]time.Time                        // 每个项目最后一条日志的时间
+	OnStopTimeout       func(projectID string)                      // 停止超时且无日志活动时的回调
+	OnAutoStartProgress func(name string, index, total int)         // 自启进度回调（可选）
+	OnAutoStartError    func(projectID, projectName, errMsg string) // 自启失败回调（可选，用于缓存错误供前端就绪后查询）
 }
 
 // managedProcess 单个被管理的进程实例
 type managedProcess struct {
-	projectID string
-	cmd       *exec.Cmd
-	ctx       context.Context
-	cancel    context.CancelFunc
-	status    string
-	pid       int
-	startedAt time.Time
-	stopCh    chan struct{} // 进程退出信号
+	projectID    string
+	cmd          *exec.Cmd
+	ctx          context.Context
+	cancel       context.CancelFunc
+	status       string
+	pid          int
+	startedAt    time.Time
+	stopCh       chan struct{} // 进程退出信号
 	restartCount int
-	logFile   string       // 临时日志文件路径（文件模式捕获输出）
-	stdin     io.WriteCloser // 进程 stdin 管道（用于发送命令）
-	wg        sync.WaitGroup // 等待输出读取 goroutine 完成
+	logFile      string         // 临时日志文件路径（文件模式捕获输出）
+	stdin        io.WriteCloser // 进程 stdin 管道（用于发送命令）
+	wg           sync.WaitGroup // 等待输出读取 goroutine 完成
 }
 
 // NewManager 创建进程管理器
@@ -294,6 +295,7 @@ func (m *Manager) StopGroup(groupID string) []string {
 }
 
 // StartAutoStartProjects 启动所有标记为自动启动的项目（按 SortOrder 升序启动）
+// 启动失败时通过 Wails Event 通知前端
 func (m *Manager) StartAutoStartProjects() {
 	projects := m.cfg.GetProjects()
 	var autoProjects []model.Project
@@ -302,6 +304,7 @@ func (m *Manager) StartAutoStartProjects() {
 			autoProjects = append(autoProjects, p)
 		}
 	}
+
 	sort.Slice(autoProjects, func(i, j int) bool {
 		return autoProjects[i].SortOrder < autoProjects[j].SortOrder
 	})
@@ -310,7 +313,22 @@ func (m *Manager) StartAutoStartProjects() {
 		if m.OnAutoStartProgress != nil {
 			m.OnAutoStartProgress(p.Name, i+1, total)
 		}
-		m.StartProject(p.ID)
+		err := m.StartProject(p.ID)
+		if err != nil {
+			log.Printf("[StartAutoStartProjects] 启动 %s(%s) 失败: %v", p.Name, p.ID, err)
+			// 通过 Wails Event 通知前端（前端加载后自动显示）
+			if ctx := m.appCtx.Load(); ctx != nil {
+				wailsRuntime.EventsEmit(ctx.(context.Context), "autostart-error", map[string]interface{}{
+					"projectId":   p.ID,
+					"projectName": p.Name,
+					"error":       err.Error(),
+				})
+			}
+			// 通过回调缓存错误（前端就绪后查询，避免事件丢失）
+			if m.OnAutoStartError != nil {
+				m.OnAutoStartError(p.ID, p.Name, err.Error())
+			}
+		}
 	}
 }
 

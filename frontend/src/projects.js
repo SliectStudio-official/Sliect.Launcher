@@ -4,7 +4,7 @@
 import {
     state, esc, toast, showConfirm, showDialog,
     getTypeInfo, getStatusLabel, formatUptime,
-    setBtnLoading, setImmediateStatus,
+    setBtnLoading, setImmediateStatus, notifyProjectAction,
 } from './core.js';
 import { getAPI } from './api-bridge.js';
 import { loadLogs } from './logviewer.js';
@@ -221,9 +221,12 @@ export async function startProject(id) {
         await api.StartProject(id);
         const p = state.projects.find(x => x.id === id);
         toast(`${p ? p.name : id} 已启动`, 'success');
+        notifyProjectAction('start', p || id, true);
         setImmediateStatus(id, 'running');
     } catch (e) {
+        const p = state.projects.find(x => x.id === id);
         toast('启动失败: ' + (e.message || e), 'error');
+        notifyProjectAction('start', p || id, false, e.message || e);
         setImmediateStatus(id, 'stopped');
     }
     setBtnLoading(btn, false);
@@ -242,11 +245,15 @@ export async function stopProject(id) {
         const actualStatus = p ? (p.status || 'stopped') : 'stopped';
         if (actualStatus === 'stopped') {
             toast(`${p ? p.name : id} 已停止`, 'info');
+            notifyProjectAction('stop', p || id, true);
         } else {
             toast(`${p ? p.name : id} 正在停止中...`, 'info');
+            notifyProjectAction('stop', p || id, true);
         }
     } catch (e) {
+        const p = state.projects.find(x => x.id === id);
         toast('停止失败: ' + (e.message || e), 'error');
+        notifyProjectAction('stop', p || id, false, e.message || e);
         await refreshData();
     }
     setBtnLoading(btn, false);
@@ -264,11 +271,15 @@ export async function restartProject(id) {
         const actualStatus = p ? (p.status || 'stopped') : 'stopped';
         if (actualStatus === 'running' || actualStatus === 'starting') {
             toast(`${p ? p.name : id} 已重启`, 'success');
+            notifyProjectAction('restart', p || id, true);
         } else {
             toast(`${p ? p.name : id} 重启中...`, 'info');
+            notifyProjectAction('restart', p || id, true);
         }
     } catch (e) {
+        const p = state.projects.find(x => x.id === id);
         toast('重启失败: ' + (e.message || e), 'error');
+        notifyProjectAction('restart', p || id, false, e.message || e);
     }
     setBtnLoading(btn, false);
 }
@@ -278,6 +289,10 @@ export async function startGroup(gid) {
     try {
         const ids = await api.StartGroup(gid);
         toast(`已启动 ${ids.length} 个项目`, 'success');
+        ids.forEach(pid => {
+            const p = state.projects.find(x => x.id === pid);
+            notifyProjectAction('start', p || pid, true);
+        });
     } catch (e) { toast('启动分组失败', 'error'); }
     await refreshData();
 }
@@ -287,6 +302,10 @@ export async function stopGroup(gid) {
     try {
         const ids = await api.StopGroup(gid);
         toast(`已停止 ${ids.length} 个项目`, 'info');
+        ids.forEach(pid => {
+            const p = state.projects.find(x => x.id === pid);
+            notifyProjectAction('stop', p || pid, true);
+        });
     } catch (e) { toast('停止分组失败', 'error'); }
     await refreshData();
 }
@@ -519,7 +538,12 @@ export function bindProjectsEvents() {
         const api = getAPI();
         for (const p of state.projects) {
             if (p.status !== 'running') {
-                try { await api.StartProject(p.id); } catch (e) { /* ignore */ }
+                try {
+                    await api.StartProject(p.id);
+                    notifyProjectAction('start', p, true);
+                } catch (e) {
+                    notifyProjectAction('start', p, false, e.message || e);
+                }
             }
         }
         toast('已启动所有项目', 'success');
@@ -530,7 +554,12 @@ export function bindProjectsEvents() {
         const api = getAPI();
         for (const p of state.projects) {
             if (p.status === 'running') {
-                try { await api.StopProject(p.id); } catch (e) { /* ignore */ }
+                try {
+                    await api.StopProject(p.id);
+                    notifyProjectAction('stop', p, true);
+                } catch (e) {
+                    notifyProjectAction('stop', p, false, e.message || e);
+                }
             }
         }
         toast('已停止所有项目', 'info');

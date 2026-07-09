@@ -110,6 +110,8 @@ func (m *Manager) UpdateProject(p model.Project) error {
 			p.PID = m.config.Projects[i].PID
 			p.StartedAt = m.config.Projects[i].StartedAt
 			p.RestartCount = m.config.Projects[i].RestartCount
+			// 保留 SortOrder（由 ReorderAutoStartProjects 管理，不应被表单更新覆盖）
+			p.SortOrder = m.config.Projects[i].SortOrder
 			m.config.Projects[i] = p
 			return m.save()
 		}
