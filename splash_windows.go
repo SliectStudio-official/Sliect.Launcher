@@ -92,6 +92,7 @@ var (
 	splashActive        atomic.Bool // showSplash 时设 true，closeSplash 完成时设 false（供看门狗无竞态检测）
 	startupProgress     atomic.Uint64 // 最近启动进度 × 1e6 存储
 	startupLastActivity atomic.Int64  // 最近一次有进展的 Unix 毫秒时间戳
+	startupComplete     atomic.Bool   // startup 完成（成功或致命错误）后设 true，看门狗据此退出
 )
 
 type splash struct {

@@ -86,6 +86,9 @@ func checkRuntimeEnvironment() bool {
 }
 
 func main() {
+	// 重置启动完成标志（避免重新启动等场景下残留）
+	startupComplete.Store(false)
+
 	serverMode := isServerMode()
 	if serverMode {
 		log.Println("[ServerMode] 检测到服务器/虚拟化模式，启动画面与 GPU 将降级处理")
@@ -123,6 +126,12 @@ func main() {
 		deadline := time.Now().Add(timeout)
 		var lastProgress uint64
 		for {
+			// startup 已完成（成功或致命错误），看门狗无需继续
+			if startupComplete.Load() {
+				log.Println("[Watchdog] startup completed, exiting watchdog")
+				return
+			}
+
 			now := time.Now()
 			if now.After(deadline) {
 				log.Println("[Watchdog] startup 20s timeout, force closing splash")

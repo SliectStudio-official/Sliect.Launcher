@@ -94,6 +94,7 @@ func (a *App) startup(ctx context.Context) {
 				Message: fmt.Sprintf("配置文件加载失败：\n\n%v\n\n请检查配置文件后重新启动。", err),
 			})
 		}()
+		startupComplete.Store(true)
 		return
 	}
 	a.cfg = cfg
@@ -189,6 +190,7 @@ func (a *App) startup(ctx context.Context) {
 	recordStartupProgress(1.0)
 	closeSplash()
 	wailsRuntime.WindowShow(ctx)
+	startupComplete.Store(true)
 }
 
 // shutdown 应用关闭时调用，停止所有进程
