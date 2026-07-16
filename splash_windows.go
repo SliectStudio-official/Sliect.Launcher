@@ -87,6 +87,7 @@ var (
 	splashStatusText    string
 	splashProgress      float32 // 0.0 ~ 1.0
 	splashDone          chan struct{}
+	splashVisibleCh     chan struct{} // ShowWindow 后 close，用于替代 showSplash 中的忙等待
 	splashCreatedAt     time.Time
 	splashVisible       atomic.Bool // ShowWindow 后设为 true
 	splashActive        atomic.Bool // showSplash 时设 true，closeSplash 完成时设 false（供看门狗无竞态检测）
@@ -517,6 +518,10 @@ func splashLogMsg(msg string) {
 func splashRun(s *splash) {
 	runtime.LockOSThread()
 
+	// 提升 splash 线程优先级，确保高 CPU 占用时窗口仍能立即显示
+	// THREAD_PRIORITY_HIGHEST = 2
+	C.SetThreadPriority(C.GetCurrentThread(), 2)
+
 	// Pin 结构体（含 Go 指针/channel），CGo 要求传给 C 的 Go 指针必须 pinned
 	var pinner runtime.Pinner
 	pinner.Pin(s)
@@ -611,6 +616,10 @@ func splashRun(s *splash) {
 	// 显示窗口（框架立即可见：背景+描边+文字，无 Logo 无进度条）
 	C.ShowWindow(s.hwnd, C.SW_SHOW)
 	splashVisible.Store(true)
+	if splashVisibleCh != nil {
+		close(splashVisibleCh)
+		splashVisibleCh = nil
+	}
 	splashLogMsg("[Go] ShowWindow done (early show)")
 
 	// 预加载并缓存所有 Logo（窗口已显示后才 decode，不阻塞弹出）
@@ -718,36 +727,33 @@ func showSplash() {
 	splashCreatedAt = time.Now()
 	sp := &splash{}
 	splashDone = make(chan struct{})
+	splashVisibleCh = make(chan struct{})
 	go func() { splashRun(sp) }()
-	// 等待窗口真正显示（ShowWindow 后才设 splashVisible），而非仅 hwnd 创建
-	// 同时检测 splashDone 关闭（CreateWindowExW 失败时会 close），避免死循环
+
+	// 使用 channel 等待窗口显示，避免高 CPU 下忙等待抢占时间片
 	timeout := time.After(10 * time.Second)
-	for !splashVisible.Load() {
-		select {
-		case <-splashDone:
-			splashLogMsg("[Go] showSplash: splashDone closed before visible (window creation failed)")
-			showNativeMessage(
-				"Sliect Launcher — 启动画面异常",
-				"当前环境无法显示启动画面（可能是虚拟服务器或远程桌面图形受限），\n"+
-					"程序将继续启动，主窗口会正常出现。",
-				false,
-			)
-			splashDone = nil
-			splashActive.Store(false)
-			return
-		case <-timeout:
-			splashLogMsg("[Go] showSplash: 10s timeout waiting for splash window")
-			showNativeMessage(
-				"Sliect Launcher — 启动画面超时",
-				"启动画面显示超时，可能是虚拟服务器图形环境受限，\n"+
-					"程序将继续启动，请稍候。",
-				false,
-			)
-			splashActive.Store(false)
-			return
-		default:
-			time.Sleep(time.Millisecond)
-		}
+	select {
+	case <-splashDone:
+		splashLogMsg("[Go] showSplash: splashDone closed before visible (window creation failed)")
+		showNativeMessage(
+			"Sliect Launcher — 启动画面异常",
+			"当前环境无法显示启动画面（可能是虚拟服务器或远程桌面图形受限），\n"+
+				"程序将继续启动，主窗口会正常出现。",
+			false,
+		)
+		splashDone = nil
+		splashActive.Store(false)
+	case <-timeout:
+		splashLogMsg("[Go] showSplash: 10s timeout waiting for splash window")
+		showNativeMessage(
+			"Sliect Launcher — 启动画面超时",
+			"启动画面显示超时，可能是虚拟服务器图形环境受限，\n"+
+				"程序将继续启动，请稍候。",
+			false,
+		)
+		splashActive.Store(false)
+	case <-splashVisibleCh:
+		// 窗口已显示，继续启动流程
 	}
 }
 
