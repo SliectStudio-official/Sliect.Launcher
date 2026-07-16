@@ -11,11 +11,12 @@ const defaultBufferSize = 500
 
 // LogBuffer 线程安全的环形日志缓冲区
 type LogBuffer struct {
-	mu      sync.RWMutex
-	entries []model.LogEntry
-	head    int
-	count   int
-	size    int
+	mu         sync.RWMutex
+	entries    []model.LogEntry
+	head       int
+	count      int
+	size       int
+	totalStats map[string]int // 累计级别统计（不随缓冲区滚动而丢失）
 }
 
 // NewLogBuffer 创建指定容量的环形缓冲区
@@ -24,8 +25,9 @@ func NewLogBuffer(size int) *LogBuffer {
 		size = defaultBufferSize
 	}
 	return &LogBuffer{
-		entries: make([]model.LogEntry, size),
-		size:    size,
+		entries:    make([]model.LogEntry, size),
+		size:       size,
+		totalStats: make(map[string]int),
 	}
 }
 
@@ -38,11 +40,29 @@ func (b *LogBuffer) Add(entry model.LogEntry) {
 		entry.Timestamp = time.Now().UnixMilli()
 	}
 
+	// 累计级别统计（不受环形缓冲区滚动影响）
+	level := entry.Level
+	if level == "" {
+		level = "info"
+	}
+	b.totalStats[level]++
+
 	b.entries[b.head] = entry
 	b.head = (b.head + 1) % b.size
 	if b.count < b.size {
 		b.count++
 	}
+}
+
+// GetStats 返回累计级别统计（从启动以来的真实总数，不随缓冲区滚动丢失）
+func (b *LogBuffer) GetStats() map[string]int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	result := make(map[string]int, len(b.totalStats))
+	for k, v := range b.totalStats {
+		result[k] = v
+	}
+	return result
 }
 
 // GetRecent 获取最近 N 条日志（可按项目 ID 过滤）

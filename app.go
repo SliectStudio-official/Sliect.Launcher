@@ -58,21 +58,32 @@ func (a *App) GetVersion() string {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	setStartupStep := func(status string, p float32) {
+		updateSplashStatus(status)
+		updateSplashProgress(p)
+		recordStartupProgress(p)
+		// 每一步之间留 5ms，让进度条变化肉眼可见
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// 注意：main.go 已经把进度推进到 0.03（初始化主窗口），
+	// app.startup 从 0.03 继续，避免进度重置后看起来“直接充满”。
+	setStartupStep("正在初始化应用上下文...", 0.03)
+
 	// 显示配置文件路径
 	appData := os.Getenv("APPDATA")
 	if appData == "" {
 		appData = os.Getenv("USERPROFILE") + `\AppData\Roaming`
 	}
 	configPath := appData + `\SliectLauncher\config.yaml`
-	updateSplashStatus("正在读取配置文件: " + configPath)
-	updateSplashProgress(0.10)
+	setStartupStep("正在定位配置文件: "+configPath, 0.07)
 
 	// 初始化配置管理器
+	setStartupStep("正在加载配置文件...", 0.11)
 	cfg, err := config.NewManager()
 	if err != nil {
 		log.Printf("配置初始化失败: %v", err)
-		updateSplashStatus("配置加载失败: " + err.Error())
-		updateSplashProgress(1.0)
+		setStartupStep("配置加载失败: "+err.Error(), 1.0)
 		closeSplash()
 		wailsRuntime.WindowShow(ctx)
 		// 致命错误：前端可能无法正常工作，用系统对话框通知用户
@@ -87,12 +98,12 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.cfg = cfg
 
-	updateSplashStatus("正在初始化进程管理器...")
-	updateSplashProgress(0.25)
-
+	setStartupStep("正在初始化进程管理器...", 0.16)
 	// 初始化进程管理器
 	a.procMgr = process.NewManager(cfg)
 	a.procMgr.SetAppContext(ctx)
+
+	setStartupStep("正在注册进程事件回调...", 0.21)
 
 	// 注册停止超时回调：5 秒后进程未退出且无日志活动 → 通知前端弹窗确认强杀
 	a.procMgr.OnStopTimeout = func(projectID string) {
@@ -101,11 +112,18 @@ func (a *App) startup(ctx context.Context) {
 
 	// 注册自启进度回调：实时更新启动画面状态与进度条
 	a.procMgr.OnAutoStartProgress = func(name string, index, total int) {
-		updateSplashStatus(fmt.Sprintf("正在启动项目 (%d/%d): %s", index, total, name))
-		// 自启阶段占 40% 进度（0.40 → 0.80）
+		// 自启阶段占 0.45 → 0.65
 		if total > 0 {
-			p := 0.40 + 0.40*float32(index)/float32(total)
+			p := 0.45 + 0.20*float32(index-1)/float32(total)
+			if p < 0.45 {
+				p = 0.45
+			}
+			if p > 0.65 {
+				p = 0.65
+			}
+			updateSplashStatus(fmt.Sprintf("正在启动项目 (%d/%d): %s", index, total, name))
 			updateSplashProgress(p)
+			recordStartupProgress(p)
 		}
 	}
 
@@ -121,37 +139,54 @@ func (a *App) startup(ctx context.Context) {
 		a.startupErrorsMu.Unlock()
 	}
 
-	updateSplashStatus("正在加载计划任务调度器...")
-	updateSplashProgress(0.35)
-
+	setStartupStep("正在初始化计划任务调度器...", 0.26)
 	// 初始化计划任务调度器（Phase 4）
 	a.schedMgr = scheduler.NewManager(cfg, a.procMgr)
+
+	setStartupStep("正在启动计划任务调度器...", 0.30)
 	a.schedMgr.Start(ctx)
 
+	setStartupStep("正在初始化端口管理器...", 0.34)
 	// 初始化端口管理器（Phase 4）
 	a.portMgr = portmgr.NewManager(a.procMgr)
 
+	setStartupStep("正在初始化文件浏览器...", 0.38)
 	// 初始化文件浏览器（Phase 5 内嵌面板）
 	a.fileMgr = filebrowser.NewManager()
 
-	updateSplashStatus("正在启动自启项目...")
-	updateSplashProgress(0.40)
+	// 统计自动启动项目数，没有时避免进度条大幅跳跃
+	var autoStartCount int
+	for _, p := range cfg.GetConfig().Projects {
+		if p.AutoStart {
+			autoStartCount++
+		}
+	}
+	if autoStartCount == 0 {
+		setStartupStep("暂无自启项目", 0.43)
+	} else {
+		setStartupStep("正在启动自启项目...", 0.43)
+	}
 
 	// 启动标记为自动启动的项目
 	a.procMgr.StartAutoStartProjects()
 
-	updateSplashStatus("正在同步开机启动设置...")
-	updateSplashProgress(0.90)
-
+	if autoStartCount == 0 {
+		setStartupStep("正在同步开机启动设置...", 0.68)
+	} else {
+		setStartupStep("正在同步开机启动设置...", 0.71)
+	}
 	// 同步开机启动注册表（确保设置与实际注册表状态一致）
 	appCfg := a.cfg.GetConfig()
 	setStartOnBoot(appCfg.StartOnBoot)
 
+	setStartupStep("正在初始化系统托盘...", 0.74)
 	// 初始化系统托盘（在独立 goroutine 中运行，不阻塞主循环）
 	go a.initTray()
 
+	setStartupStep("正在完成启动...", 0.78)
 	// 启动画面淡出 → 显示主窗口
 	updateSplashProgress(1.0)
+	recordStartupProgress(1.0)
 	closeSplash()
 	wailsRuntime.WindowShow(ctx)
 }
@@ -664,20 +699,14 @@ func (a *App) GetNetIOStats() []sysmonitor.NetIOStats {
 	return sysmonitor.GetNetIOStats()
 }
 
-// GetLogStats 获取所有项目的日志级别统计
+// GetLogStats 获取所有项目的累计日志级别统计（从启动以来的真实总数）
 func (a *App) GetLogStats() map[string]int {
 	stats := map[string]int{"error": 0, "warn": 0, "info": 0, "debug": 0, "trace": 0}
 	if a.procMgr == nil {
 		return stats
 	}
-	// 获取所有项目的日志
-	for _, p := range a.cfg.GetProjects() {
-		logs := a.procMgr.GetLogs(p.ID, 500)
-		for _, entry := range logs {
-			if _, ok := stats[entry.Level]; ok {
-				stats[entry.Level]++
-			}
-		}
+	for k, v := range a.procMgr.GetLogStats() {
+		stats[k] = v
 	}
 	return stats
 }

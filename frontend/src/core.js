@@ -240,10 +240,36 @@ export function setImmediateStatus(id, status) {
 // notifications 数组由 core.js 统一管理，main.js 负责渲染，所有模块通过 pushNotification 推送
 export const notifications = []; // {id, type, title, message, time, read, projectId, name, timeline}
 
+// ERROR 日志节流：同一项目 5 秒内的 ERROR 日志合并到同一条通知的时间线
+const errorThrottle = {}; // projectId → 上次 ERROR 通知创建时间
+
 export function pushNotification(n) {
     // 确保时间字段存在（合并路径依赖此字段）
     if (!n.time) n.time = Date.now();
-    // 如果通知带 projectId 且已有同项目的通知，合并为时间线
+
+    // ERROR 日志节流：同一项目 5 秒内只创建一条通知，后续追加到时间线
+    if (n.type === 'error' && n.projectId) {
+        const existing = notifications.find(x => x.projectId === n.projectId && x.type === 'error');
+        if (existing) {
+            // 已有同项目 ERROR 通知，追加到时间线
+            if (!existing.timeline) existing.timeline = [];
+            existing.timeline.push({ time: n.time, event: n.title, message: n.message });
+            existing.message = n.message;
+            existing.time = n.time;
+            updateBellBadge();
+            return;
+        }
+        // 没有 existing：检查是否在节流期内
+        const lastTime = errorThrottle[n.projectId] || 0;
+        if (n.time - lastTime < 5000) {
+            // 节流期内：丢弃（避免短时间内创建多条通知）
+            updateBellBadge();
+            return;
+        }
+        errorThrottle[n.projectId] = n.time;
+    }
+
+    // 其他类型：如果通知带 projectId 且已有同项目的通知，合并为时间线
     if (n.projectId) {
         const existing = notifications.find(x => x.projectId === n.projectId && x.type === n.type);
         if (existing) {
@@ -276,6 +302,13 @@ export function updateBellBadge() {
 
 export function getNotifications() {
     return notifications;
+}
+
+// 清空所有通知并重置节流状态
+export function clearNotifications() {
+    notifications.length = 0;
+    for (const k in errorThrottle) delete errorThrottle[k];
+    updateBellBadge();
 }
 
 // 便捷方法：推送项目操作通知（统一格式，带时间轴）

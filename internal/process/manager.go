@@ -440,6 +440,11 @@ func (m *Manager) ClearLogs(projectID string) {
 	m.logBuf.Clear(projectID)
 }
 
+// GetLogStats 返回累计日志级别统计（从启动以来的真实总数）
+func (m *Manager) GetLogStats() map[string]int {
+	return m.logBuf.GetStats()
+}
+
 // startProcessLocked 启动进程（调用者必须持有写锁）
 // 使用文件模式捕获输出：将 stdout/stderr 重定向到临时日志文件，
 // 然后在后台 goroutine 中 tail 该文件。这比管道模式更可靠，

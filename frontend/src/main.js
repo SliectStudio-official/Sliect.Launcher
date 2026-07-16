@@ -1,7 +1,7 @@
 // ========== Sliect Launcher — 主入口 ==========
 // 负责：模块编排、顶部导航、底部状态栏、全局事件、Wails 事件订阅
 
-import { state, applyTheme, getCurrentSavedTheme, setCurrentSavedTheme, toast, showConfirm, showDialog, esc, pushNotification, getNotifications, updateBellBadge, notifyProjectAction } from './core.js';
+import { state, applyTheme, getCurrentSavedTheme, setCurrentSavedTheme, toast, showConfirm, showDialog, esc, pushNotification, getNotifications, clearNotifications, updateBellBadge, notifyProjectAction } from './core.js';
 import { initAPI, getAPI, getWailsRuntime } from './api-bridge.js';
 import {
     renderDashboard, renderStatCards, bindDashboardEvents,
@@ -135,30 +135,46 @@ function getScrollTooltip() {
     return scrollTooltip;
 }
 
-function showScrollTooltip(list, mouseY) {
-    const tip = getScrollTooltip();
-    // 找到当前可见区域中第一个 notification-item 的时间
-    const items = list.querySelectorAll('.notification-item');
-    if (!items.length) return;
+// 将时间戳格式化为 HH:MM:SS
+function formatTimeShort(ts) {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return null;
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+}
+
+// 根据滚动位置找到当前可见区域第一条通知的时间
+function getTimeAtScroll(list) {
+    const items = list.querySelectorAll('.notification-item[data-ts]');
+    if (!items.length) return null;
     const listRect = list.getBoundingClientRect();
-    let targetTime = null;
     for (const item of items) {
         const rect = item.getBoundingClientRect();
-        // 找到第一个顶部在可见区域内的项
-        if (rect.bottom >= listRect.top + 4 && rect.top <= listRect.bottom) {
-            const timeEl = item.querySelector('.notification-time');
-            if (timeEl) {
-                targetTime = timeEl.textContent;
-            }
-            break;
+        // 找到第一个与可见区域有交集的项（包括部分可见）
+        if (rect.bottom > listRect.top + 1 && rect.top < listRect.bottom - 1) {
+            return formatTimeShort(parseInt(item.dataset.ts));
         }
     }
-    if (targetTime) {
-        tip.textContent = targetTime;
-        tip.style.left = (listRect.right) + 'px';
-        tip.style.top = (mouseY - 12) + 'px';
-        tip.classList.add('visible');
-    }
+    // 滚动到底部：返回最后一项的时间
+    const last = items[items.length - 1];
+    return formatTimeShort(parseInt(last.dataset.ts));
+}
+
+function showScrollTooltip(list, mouseY) {
+    const tip = getScrollTooltip();
+    const targetTime = getTimeAtScroll(list);
+    if (!targetTime) return;
+    tip.textContent = targetTime;
+    // 放在滚动条左侧，避免被窗口右边缘截断
+    const listRect = list.getBoundingClientRect();
+    const scrollbarWidth = 6;
+    const gap = 8;
+    tip.style.left = (listRect.right - scrollbarWidth - gap) + 'px';
+    tip.style.top = (mouseY - 12) + 'px';
+    tip.style.transform = 'translateX(-100%)';
+    tip.classList.add('visible');
 }
 
 function hideScrollTooltip() {
@@ -166,21 +182,20 @@ function hideScrollTooltip() {
 }
 
 function bindListScrollTooltip(list) {
-    // 鼠标在滚动条区域按下 → 开始拖动
+    // 鼠标在滚动条区域按下 → 立即显示时间提示
     list.addEventListener('mousedown', (e) => {
         const rect = list.getBoundingClientRect();
-        const scrollbarWidth = 6; // 与 CSS 中 webkit-scrollbar width 一致
-        // 判断点击是否在右侧滚动条区域
+        const scrollbarWidth = 10; // 适当扩大点击检测区域
         if (e.clientX >= rect.right - scrollbarWidth && e.clientX <= rect.right) {
             scrollDragging = true;
             clearTimeout(scrollHideTimer);
+            // 立即显示，用鼠标 Y 坐标
             showScrollTooltip(list, e.clientY);
         }
     });
-    // 拖动中 → 跟随鼠标
+    // 拖动中 → 根据滚动位置更新时间和提示位置
     list.addEventListener('scroll', () => {
         if (scrollDragging) {
-            // 从滚动位置推算鼠标 Y（近似）
             const rect = list.getBoundingClientRect();
             const scrollTop = list.scrollTop;
             const maxScroll = list.scrollHeight - list.clientHeight;
@@ -214,9 +229,10 @@ function openNotificationCenter() {
     } else {
         list.innerHTML = notifications.map(n => {
             const hasTimeline = n.timeline && n.timeline.length > 0;
+            const timeStr = new Date(n.time).toLocaleString('zh-CN', { hour12: false });
             const timelineHtml = hasTimeline ? `
                 <div class="notification-timeline" style="display:none;">
-                    ${n.timeline.map(t => `
+                    ${n.timeline.slice().reverse().map(t => `
                         <div class="timeline-item">
                             <span class="timeline-time">${new Date(t.time).toLocaleString('zh-CN', { hour12: false })}</span>
                             <span class="timeline-event">${esc(t.event || '')}</span>
@@ -225,10 +241,10 @@ function openNotificationCenter() {
                     `).join('')}
                 </div>` : '';
             return `
-            <div class="notification-item ${n.read ? '' : 'unread'}${hasTimeline ? ' expandable' : ''}" data-nid="${n.id}">
+            <div class="notification-item ${n.read ? '' : 'unread'}${hasTimeline ? ' expandable' : ''}" data-nid="${n.id}" data-ts="${n.time}">
                 <div class="notification-item-header">
                     <span class="notification-type ${n.type || 'info'}">${n.title || '通知'}</span>
-                    <span class="notification-time">${new Date(n.time).toLocaleString('zh-CN', { hour12: false })}</span>
+                    <span class="notification-time">${timeStr}</span>
                 </div>
                 <div class="notification-message">${esc(n.message || '')}</div>
                 ${hasTimeline ? '<div class="notification-expand-hint">点击展开时间线</div>' : ''}
@@ -265,6 +281,16 @@ function bindNotificationCenter() {
     const panel = document.getElementById('notification-panel');
     const closeBtn = document.getElementById('notification-close');
     if (closeBtn) closeBtn.addEventListener('click', () => panel.classList.remove('active'));
+    // 一键清除
+    const clearBtn = document.getElementById('notification-clear');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+        const notifications = getNotifications();
+        if (notifications.length === 0) return;
+        clearNotifications(); // 清空数组 + 重置节流状态
+        const list = document.getElementById('notification-list');
+        if (list) list.innerHTML = `<div class="notification-empty">暂无通知</div>`;
+        hideScrollTooltip();
+    });
     // 点击面板外部关闭
     document.addEventListener('click', (e) => {
         if (!panel) return;

@@ -52,7 +52,7 @@ import (
 
 // Version 格式: 大版本.yyMMdd.HHmm（大版本手动管理，详细版本为构建时间）
 // 可通过 -ldflags "-X main.Version=x.y.yyMMdd.HHmm" 在编译时注入
-var Version = "2.1.260709.1342"
+var Version = "2.2.260716.1435"
 
 // ======================== 嵌入资源 ========================
 
@@ -83,12 +83,15 @@ const (
 // ======================== 全局状态 ========================
 
 var (
-	splashMu         sync.RWMutex
-	splashStatusText string
-	splashProgress   float32 // 0.0 ~ 1.0
-	splashDone       chan struct{}
-	splashCreatedAt  time.Time
-	splashVisible    atomic.Bool // ShowWindow 后设为 true
+	splashMu            sync.RWMutex
+	splashStatusText    string
+	splashProgress      float32 // 0.0 ~ 1.0
+	splashDone          chan struct{}
+	splashCreatedAt     time.Time
+	splashVisible       atomic.Bool // ShowWindow 后设为 true
+	splashActive        atomic.Bool // showSplash 时设 true，closeSplash 完成时设 false（供看门狗无竞态检测）
+	startupProgress     atomic.Uint64 // 最近启动进度 × 1e6 存储
+	startupLastActivity atomic.Int64  // 最近一次有进展的 Unix 毫秒时间戳
 )
 
 type splash struct {
@@ -127,6 +130,18 @@ func detectDarkMode() bool {
 
 func (s *splash) sp(v int) int { return int(float64(v) * s.dpiScale) }
 
+// textSize 根据窗口实际高度自适应缩放文字大小。
+// 以 240px 窗口高度为基准，随窗口放大而放大，保证在大屏/高分屏上文字可读。
+// s.h 已经包含 DPI 缩放，因此这里不再乘 dpiScale，避免双重缩放。
+func (s *splash) textSize(base int) int {
+	const refH = 240.0
+	scale := float64(s.h) / refH
+	if scale < 1.0 {
+		scale = 1.0
+	}
+	return int(float64(base) * scale)
+}
+
 func makeARGB(a, r, g, b byte) C.DWORD {
 	return C.DWORD(uint32(a)<<24 | uint32(r)<<16 | uint32(g)<<8 | uint32(b))
 }
@@ -148,11 +163,10 @@ func goSplashWndProc(hwnd C.HWND, msg C.UINT, wParam C.WPARAM, lParam C.LPARAM) 
 		}
 		switch wParam {
 		case timerTopmostID:
-			// 周期性重设 TOPMOST，防止 Wails 创建主窗口时抢占 z-order
-			if !sp.fading {
-				C.SetWindowPos(hwnd, C.HWND_TOPMOST, 0, 0, 0, 0,
-					C.SWP_NOMOVE|C.SWP_NOSIZE|C.SWP_NOACTIVATE)
-			}
+			// 窗口已可见一段时间，取消置顶，避免挡住后续 MessageBox/确认框
+			C.SetWindowPos(hwnd, C.HWND_NOTOPMOST, 0, 0, 0, 0,
+				C.SWP_NOMOVE|C.SWP_NOSIZE|C.SWP_NOACTIVATE)
+			C.KillTimer(hwnd, timerTopmostID)
 		default: // timerAnimID
 			if sp.fading {
 				sp.fadeFrame++
@@ -323,11 +337,26 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 	studioMargin := C.float(s.sp(16))
 	leftMargin := studioMargin
 
+	// ── 从底部向上计算进度条、状态文字、标题文字的位置，避免重叠 ──
+	barH := C.float(s.sp(4))
+	barY := hf - studioMargin - studioH - C.float(s.sp(12))
+	statusH := C.float(s.textSize(16))
+	statusY := barY - C.float(s.sp(8)) - statusH
+	titleH := C.float(s.textSize(20))
+	titleY := statusY - C.float(s.sp(4)) - titleH
+
+	// 如果标题会压到主 Logo，把整体文字区域下移（Logo 底部与标题顶部留一点间距）
+	minTitleY := logoBottomY + C.float(s.sp(8))
+	if titleY < minTitleY {
+		offset := minTitleY - titleY
+		titleY += offset
+		statusY += offset
+	}
+
 	// ── "正在启动..." ──
-	textY := logoBottomY + C.float(s.sp(20))
 	{
 		textW, _ := syscall.UTF16FromString("正在启动...")
-		font := C.splashCreateFont((*C.WCHAR)(unsafe.Pointer(mustUTF16Ptr("Segoe UI"))), C.float(s.sp(11)), 0)
+		font := C.splashCreateFont((*C.WCHAR)(unsafe.Pointer(mustUTF16Ptr("Segoe UI"))), C.float(s.textSize(11)), 0)
 		var brush unsafe.Pointer
 		if s.dark {
 			brush = C.splashCreateSolidBrush(makeARGB(255, 161, 161, 170))
@@ -338,7 +367,7 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 			fmt := C.splashCreateStringFormat(0, 0) // 左对齐，顶部对齐
 			C.splashDrawString(s.gfx,
 				(*C.WCHAR)(unsafe.Pointer(&textW[0])), C.INT(len(textW)-1),
-				font, leftMargin, textY, wf-leftMargin*2, C.float(s.sp(20)), fmt, brush)
+				font, leftMargin, titleY, wf-leftMargin*2, titleH, fmt, brush)
 			C.splashDeleteStringFormat(fmt)
 			C.splashDeleteFont(font)
 		}
@@ -351,7 +380,7 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 	splashMu.RUnlock()
 	if stText != "" {
 		stW, _ := syscall.UTF16FromString(stText)
-		font := C.splashCreateFont((*C.WCHAR)(unsafe.Pointer(mustUTF16Ptr("Segoe UI"))), C.float(s.sp(9)), 0)
+		font := C.splashCreateFont((*C.WCHAR)(unsafe.Pointer(mustUTF16Ptr("Segoe UI"))), C.float(s.textSize(9)), 0)
 		var brush unsafe.Pointer
 		if s.dark {
 			brush = C.splashCreateSolidBrush(makeARGB(255, 82, 82, 91))
@@ -362,7 +391,7 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 			fmt := C.splashCreateStringFormat(0, 0) // 左对齐，顶部对齐
 			C.splashDrawString(s.gfx,
 				(*C.WCHAR)(unsafe.Pointer(&stW[0])), C.INT(len(stW)-1),
-				font, leftMargin, textY+C.float(s.sp(22)), wf-leftMargin*2, C.float(s.sp(16)), fmt, brush)
+				font, leftMargin, statusY, wf-leftMargin*2, statusH, fmt, brush)
 			C.splashDeleteStringFormat(fmt)
 			C.splashDeleteFont(font)
 		}
@@ -374,9 +403,6 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 	progress := splashProgress
 	splashMu.RUnlock()
 	if progress > 0 {
-		// 距底部 = studioMargin + studioH + sp(12)，让进度条在 Logo 上方留 12px 间距
-		barY := hf - studioMargin - studioH - C.float(s.sp(12))
-		barH := C.float(s.sp(4))
 		barW := wf - leftMargin*2
 		barX := leftMargin
 
@@ -428,7 +454,7 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 
 		// 创建 GDI 字体
 		hFont := C.CreateFontW(
-			C.int(s.sp(9)), 0, 0, 0, C.FW_NORMAL, 0, 0, 0,
+			C.int(s.textSize(9)), 0, 0, 0, C.FW_NORMAL, 0, 0, 0,
 			C.DEFAULT_CHARSET, C.OUT_DEFAULT_PRECIS, C.CLIP_DEFAULT_PRECIS,
 			C.CLEARTYPE_QUALITY, C.DEFAULT_PITCH|C.FF_DONTCARE,
 			(*C.WCHAR)(unsafe.Pointer(mustUTF16Ptr("Segoe UI"))),
@@ -448,8 +474,8 @@ func (s *splash) splashPaint(dstDC C.HDC) {
 
 			// 绘制文字（右对齐，垂直居中，单行）
 			rc := C.RECT{
-				left:   0,
-				top:    C.LONG(int(hf-studioMargin-studioH) + int(studioH)/2 - s.sp(9)/2),
+				left:   C.LONG(int(wf) / 2),
+				top:    C.LONG(int(hf - studioMargin - studioH)),
 				right:  C.LONG(int(wf) - int(studioMargin)),
 				bottom: C.LONG(int(hf) - int(studioMargin)),
 			}
@@ -605,7 +631,7 @@ func splashRun(s *splash) {
 	splashLogMsg("[Go] UpdateWindow done, entering message loop")
 
 	s.timerID = C.SetTimer(s.hwnd, timerAnimID, 30, nil)
-	C.SetTimer(s.hwnd, timerTopmostID, 300, nil) // 每 300ms 重设 TOPMOST
+	C.SetTimer(s.hwnd, timerTopmostID, 800, nil) // 800ms 后取消置顶，避免挡住后续弹窗
 
 	var msg C.MSG
 	for C.GetMessageW(&msg, nil, 0, 0) > 0 {
@@ -621,14 +647,106 @@ func splashRun(s *splash) {
 
 // ======================== 公开 API ========================
 
+// showNativeMessage 用原生 MessageBox 显示提示信息，作为 splash/主窗口都起不来时的最后兜底。
+// 使用 UTF-16 编码的标题和内容，确保中文正常显示。
+func showNativeMessage(title, message string, isError bool) {
+	// 使用 C 分配的内存，避免 Go 字符串指针在 C 调用期间被 GC
+	titleStr := C.CString(title)
+	msgStr := C.CString(message)
+	defer C.free(unsafe.Pointer(titleStr))
+	defer C.free(unsafe.Pointer(msgStr))
+
+	titleLen := C.MultiByteToWideChar(C.CP_UTF8, 0, titleStr, -1, nil, 0)
+	msgLen := C.MultiByteToWideChar(C.CP_UTF8, 0, msgStr, -1, nil, 0)
+
+	titleBuf := (*C.WCHAR)(C.malloc(C.size_t(titleLen) * C.size_t(unsafe.Sizeof(C.WCHAR(0)))))
+	msgBuf := (*C.WCHAR)(C.malloc(C.size_t(msgLen) * C.size_t(unsafe.Sizeof(C.WCHAR(0)))))
+	defer C.free(unsafe.Pointer(titleBuf))
+	defer C.free(unsafe.Pointer(msgBuf))
+
+	C.MultiByteToWideChar(C.CP_UTF8, 0, titleStr, -1, titleBuf, titleLen)
+	C.MultiByteToWideChar(C.CP_UTF8, 0, msgStr, -1, msgBuf, msgLen)
+
+	var flags C.UINT = C.MB_OK
+	if isError {
+		flags |= C.MB_ICONERROR
+	} else {
+		flags |= C.MB_ICONEXCLAMATION
+	}
+
+	C.MessageBoxW(nil, msgBuf, titleBuf, flags)
+}
+
+// showNativeConfirm 显示 Yes/No 原生确认对话框，返回 true 表示用户点了“是/确定”。
+func showNativeConfirm(title, message string, isError bool) bool {
+	titleStr := C.CString(title)
+	msgStr := C.CString(message)
+	defer C.free(unsafe.Pointer(titleStr))
+	defer C.free(unsafe.Pointer(msgStr))
+
+	titleLen := C.MultiByteToWideChar(C.CP_UTF8, 0, titleStr, -1, nil, 0)
+	msgLen := C.MultiByteToWideChar(C.CP_UTF8, 0, msgStr, -1, nil, 0)
+
+	titleBuf := (*C.WCHAR)(C.malloc(C.size_t(titleLen) * C.size_t(unsafe.Sizeof(C.WCHAR(0)))))
+	msgBuf := (*C.WCHAR)(C.malloc(C.size_t(msgLen) * C.size_t(unsafe.Sizeof(C.WCHAR(0)))))
+	defer C.free(unsafe.Pointer(titleBuf))
+	defer C.free(unsafe.Pointer(msgBuf))
+
+	C.MultiByteToWideChar(C.CP_UTF8, 0, titleStr, -1, titleBuf, titleLen)
+	C.MultiByteToWideChar(C.CP_UTF8, 0, msgStr, -1, msgBuf, msgLen)
+
+	var flags C.UINT = C.MB_YESNO
+	if isError {
+		flags |= C.MB_ICONERROR
+	} else {
+		flags |= C.MB_ICONEXCLAMATION
+	}
+
+	ret := C.MessageBoxW(nil, msgBuf, titleBuf, flags)
+	return ret == C.IDYES
+}
+
+// recordStartupProgress 记录启动进度与活动时间戳，供看门狗判断是否在真实加载。
+func recordStartupProgress(p float32) {
+	startupProgress.Store(uint64(p * 1e6))
+	startupLastActivity.Store(time.Now().UnixMilli())
+}
+
 func showSplash() {
+	splashActive.Store(true)
 	splashCreatedAt = time.Now()
 	sp := &splash{}
 	splashDone = make(chan struct{})
 	go func() { splashRun(sp) }()
 	// 等待窗口真正显示（ShowWindow 后才设 splashVisible），而非仅 hwnd 创建
+	// 同时检测 splashDone 关闭（CreateWindowExW 失败时会 close），避免死循环
+	timeout := time.After(10 * time.Second)
 	for !splashVisible.Load() {
-		time.Sleep(time.Millisecond)
+		select {
+		case <-splashDone:
+			splashLogMsg("[Go] showSplash: splashDone closed before visible (window creation failed)")
+			showNativeMessage(
+				"Sliect Launcher — 启动画面异常",
+				"当前环境无法显示启动画面（可能是虚拟服务器或远程桌面图形受限），\n"+
+					"程序将继续启动，主窗口会正常出现。",
+				false,
+			)
+			splashDone = nil
+			splashActive.Store(false)
+			return
+		case <-timeout:
+			splashLogMsg("[Go] showSplash: 10s timeout waiting for splash window")
+			showNativeMessage(
+				"Sliect Launcher — 启动画面超时",
+				"启动画面显示超时，可能是虚拟服务器图形环境受限，\n"+
+					"程序将继续启动，请稍候。",
+				false,
+			)
+			splashActive.Store(false)
+			return
+		default:
+			time.Sleep(time.Millisecond)
+		}
 	}
 }
 
@@ -668,7 +786,25 @@ func closeSplash() {
 	if hwnd != nil {
 		C.PostMessageW(hwnd, wmCloseSplash, 0, 0)
 	}
-	<-splashDone
+
+	// 带超时的等待，防止消息循环挂起（虚拟服务器等异常环境）导致永久阻塞
+	select {
+	case <-splashDone:
+		// 正常关闭
+	case <-time.After(5 * time.Second):
+		splashLogMsg("[Go] closeSplash: 5s timeout waiting for splash to close, forcing")
+		if hwnd != nil {
+			C.DestroyWindow(hwnd)
+		}
+		// 再等一下 WM_DESTROY 的 close(splashDone)
+		select {
+		case <-splashDone:
+		case <-time.After(2 * time.Second):
+			splashLogMsg("[Go] closeSplash: force timeout, proceeding without splash cleanup")
+		}
+	}
+
 	splashDone = nil
 	splashVisible.Store(false)
+	splashActive.Store(false)
 }
